@@ -33,16 +33,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
-#include <unistd.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 #include <rdma/fi_errno.h>
 #include <rdma/fi_endpoint.h>
 #include <rdma/fi_cm.h>
 
 #include "shared.h"
-
 
 union sockaddr_any {
 	struct sockaddr		sa;
@@ -265,11 +265,11 @@ static int client_connect(void)
 	 * from */
 	FT_CLOSE_FID(pep);
 
-	ret = check_address(&ep->fid, "fi_endpoint (ep)");
+	ret = ft_init_ep();
 	if (ret)
 		return ret;
 
-	ret = ft_init_ep();
+	ret = check_address(&ep->fid, "fi_endpoint (ep)");
 	if (ret)
 		return ret;
 
@@ -283,7 +283,7 @@ static int client_connect(void)
 	/* Wait for the connection to be established */
 	rd = fi_eq_sread(eq, &event, &entry, sizeof entry, -1, 0);
 	if (rd != sizeof entry) {
-		FT_PRINTERR("fi_eq_sread", rd);
+		FT_PROCESS_EQ_ERR(rd, eq, "fi_eq_sread", "listen");
 		return (int) rd;
 	}
 
@@ -434,7 +434,7 @@ static int run(void)
 		return ret;
 	}
 
-	ret = send_recv_greeting();
+	ret = send_recv_greeting(ep);
 
 	fi_shutdown(ep, 0);
 	return ret;
@@ -475,5 +475,5 @@ int main(int argc, char **argv)
 	ret = run();
 
 	ft_free_res();
-	return -ret;
+	return ft_exit_code(ret);
 }

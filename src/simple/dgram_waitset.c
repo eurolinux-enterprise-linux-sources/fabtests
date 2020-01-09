@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2015 Intel Corporation.  All rights reserved.
- * Copyright (c) 2015 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2015-2016 Cisco Systems, Inc.  All rights reserved.
  *
  * This software is available to you under the BSD license below:
  *
@@ -31,16 +31,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
-#include <time.h>
-#include <netdb.h>
-#include <unistd.h>
 
-#include <rdma/fabric.h>
 #include <rdma/fi_errno.h>
-#include <rdma/fi_endpoint.h>
-#include <rdma/fi_cm.h>
-#include <shared.h>
 
+#include <shared.h>
 
 static int alloc_ep_res(struct fi_info *fi)
 {
@@ -64,19 +58,11 @@ static int alloc_ep_res(struct fi_info *fi)
 
 static int init_fabric(void)
 {
-	uint64_t flags = 0;
-	char *node, *service;
 	int ret;
 
-	ret = ft_read_addr_opts(&node, &service, hints, &flags, &opts);
+	ret = ft_getinfo(hints, &fi);
 	if (ret)
 		return ret;
-
-	ret = fi_getinfo(FT_FIVERSION, node, service, flags, hints, &fi);
-	if (ret) {
-		FT_PRINTERR("fi_getinfo", ret);
-		return ret;
-	}
 
 	ret = ft_open_fabric_res();
 	if (ret)
@@ -98,8 +84,15 @@ static int send_recv()
 	struct fi_cq_entry comp;
 	int ret;
 
+	ret = fi_recv(ep, rx_buf, rx_size + ft_rx_prefix_size(), fi_mr_desc(mr),
+		      0, &rx_ctx);
+	if (ret)
+		return ret;
+
+	ft_sync();
+
 	fprintf(stdout, "Posting a send...\n");
-	ret = ft_post_tx(tx_size);
+	ret = ft_post_tx(ep, remote_fi_addr, tx_size, &tx_ctx);
 	if (ret)
 		return ret;
 
@@ -193,5 +186,5 @@ int main(int argc, char **argv)
 	ret = run();
 
 	ft_free_res();
-	return -ret;
+	return ft_exit_code(ret);
 }

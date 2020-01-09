@@ -29,27 +29,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
-#include <errno.h>
 #include <getopt.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <sys/wait.h>
-#include <netdb.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <time.h>
 #include <complex.h>
 
-#include <rdma/fabric.h>
-#include <rdma/fi_endpoint.h>
-#include <rdma/fi_domain.h>
-#include <rdma/fi_tagged.h>
-#include <rdma/fi_rma.h>
-#include <rdma/fi_cm.h>
 #include <rdma/fi_errno.h>
 #include <rdma/fi_atomic.h>
 
@@ -439,19 +421,11 @@ static int alloc_ep_res(struct fi_info *fi)
 
 static int init_fabric(void)
 {
-	uint64_t flags = 0;
-	char *node, *service;
 	int ret;
 
-	ret = ft_read_addr_opts(&node, &service, hints, &flags, &opts);
+	ret = ft_getinfo(hints, &fi);
 	if (ret)
 		return ret;
-
-	ret = fi_getinfo(FT_FIVERSION, node, service, flags, hints, &fi);
-	if (ret) {
-		FT_PRINTERR("fi_getinfo", ret);
-		return ret;
-	}
 
 	ret = ft_open_fabric_res();
 	if (ret)
@@ -489,7 +463,7 @@ static int run(void)
 		goto out;
 
 	ft_sync();
-	ft_finalize(fi, ep, txcq, rxcq, remote_fi_addr);
+	ft_finalize();
 out:
 	return ret;
 }
@@ -528,7 +502,7 @@ int main(int argc, char **argv)
 			break;
 		case '?':
 		case 'h':
-			ft_csusage(argv[0], "Ping pong client and server using atomic ops.");
+			ft_csusage(argv[0], "Streaming RDM client-server using atomic operations.");
 			FT_PRINT_OPTS_USAGE("-o <op>", "atomic op type: all|min|max|sum|prod|lor|");
 			FT_PRINT_OPTS_USAGE("", "land|bor|band|lxor|bxor|read|write|cswap|cswap_ne|"
 					"cswap_le|cswap_lt|");
@@ -548,5 +522,5 @@ int main(int argc, char **argv)
 
 	free_res();
 	ft_free_res();
-	return -ret;
+	return ft_exit_code(ret);
 }

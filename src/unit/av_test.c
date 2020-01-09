@@ -33,23 +33,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
 #include <getopt.h>
-#include <poll.h>
-#include <time.h>
 #include <string.h>
+#include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <inttypes.h>
-#include <netinet/in.h>
 
-#include <rdma/fabric.h>
-#include <rdma/fi_domain.h>
 #include <rdma/fi_errno.h>
-#include <rdma/fi_endpoint.h>
-#include <rdma/fi_cm.h>
 
 #include "shared.h"
 #include "unit_common.h"
@@ -59,12 +49,10 @@
 char *good_address;
 int num_good_addr;
 char *bad_address;
-static char *src_addr_str = NULL;
 
 static enum fi_av_type av_type;
 
 static char err_buf[512];
-
 
 static int
 check_eq_readerr(struct fid_eq *eq, fid_t fid, void *context, int index)
@@ -947,19 +935,24 @@ fail:
 }
 
 struct test_entry test_array_good[] = {
-	TEST_ENTRY(av_open_close),
-	TEST_ENTRY(av_good_sync),
-	TEST_ENTRY(av_good_vector_async),
-	TEST_ENTRY(av_zero_async),
-	TEST_ENTRY(av_good_2vector_async),
+	TEST_ENTRY(av_open_close, "Test open and close AVs of varying sizes"),
+	TEST_ENTRY(av_good_sync, "Test sync AV insert with good address"),
+	TEST_ENTRY(av_good_vector_async,
+			"Test async AV insert with vector of good addresses"),
+	TEST_ENTRY(av_zero_async, "Test async insert AV insert of zero addresses"),
+	TEST_ENTRY(av_good_2vector_async,
+			"Test async AV inserts with two address vectors"),
 	{ NULL, "" }
 };
 
 struct test_entry test_array_bad[] = {
-	TEST_ENTRY(av_bad_sync),
-	TEST_ENTRY(av_goodbad_vector_sync),
-	TEST_ENTRY(av_goodbad_vector_async),
-	TEST_ENTRY(av_goodbad_2vector_async),
+	TEST_ENTRY(av_bad_sync, "Test sync AV insert of bad address"),
+	TEST_ENTRY(av_goodbad_vector_sync,
+			"Test sync AV insert of 1 good and 1 bad address"),
+	TEST_ENTRY(av_goodbad_vector_async,
+			"Test async AV insert with good and bad address"),
+	TEST_ENTRY(av_goodbad_2vector_async, "Test async AV insert with two vectors:"
+			" one good and one mix (good + bad)"),
 	{ NULL, "" }
 };
 
@@ -972,15 +965,25 @@ run_test_set()
 
 	failed += run_tests(test_array_good, err_buf);
 	if (bad_address != NULL) {
-		printf("Testing with bad_address = \"%s\"\n", bad_address);
+		printf("\nTesting with bad_address = \"%s\"\n", bad_address);
 		failed += run_tests(test_array_bad, err_buf);
 	}
 
 	bad_address = NULL;
-	printf("Testing with invalid address\n");
+	printf("\nTesting with invalid address\n");
 	failed += run_tests(test_array_bad, err_buf);
 
 	return failed;
+}
+
+static void usage(void)
+{
+	ft_unit_usage("av_test", "Unit test for Address Vector (AV)");
+	FT_PRINT_OPTS_USAGE("-g <good_address>", "");
+	FT_PRINT_OPTS_USAGE("-G <bad_address>]", "");
+	fprintf(stderr, FT_OPTS_USAGE_FORMAT " (max=%d)\n", "-n <num_good_addr>",
+			"Number of good addresses", MAX_ADDR - 1);
+	FT_PRINT_OPTS_USAGE("-s <source_address>", "");
 }
 
 int main(int argc, char **argv)
@@ -988,47 +991,40 @@ int main(int argc, char **argv)
 	int op, ret;
 	int failed;
 
+	opts = INIT_OPTS;
+	opts.options |= FT_OPT_SIZE;
+
 	hints = fi_allocinfo();
 	if (!hints)
 		return EXIT_FAILURE;
 
-	while ((op = getopt(argc, argv, "f:d:D:n:a:s:")) != -1) {
+	while ((op = getopt(argc, argv, FAB_OPTS "g:G:n:s:h")) != -1) {
 		switch (op) {
-		case 'd':
+		case 'g':
 			good_address = optarg;
 			break;
-		case 'D':
+		case 'G':
 			bad_address = optarg;
-			break;
-		case 'a':
-			free(hints->fabric_attr->name);
-			hints->fabric_attr->name = strdup(optarg);
 			break;
 		case 'n':
 			num_good_addr = atoi(optarg);
 			break;
-		case 'f':
-			free(hints->fabric_attr->prov_name);
-			hints->fabric_attr->prov_name = strdup(optarg);
-			break;
 		case 's':
-			src_addr_str = optarg;
+			opts.src_addr = optarg;
 			break;
 		default:
-			printf("usage: %s\n", argv[0]);
-			printf("\t[-d good_address]\n");
-			printf("\t[-D bad_address]\n");
-			printf("\t[-a fabric_name]\n");
-			printf("\t[-n num_good_addr (max=%d)]\n", MAX_ADDR - 1);
-			printf("\t[-f provider_name]\n");
-			printf("\t[-s source_address]\n");
+			ft_parseinfo(op, optarg, hints);
+			break;
+		case '?':
+		case 'h':
+			usage();
 			return EXIT_FAILURE;
 
 		}
 	}
 
 	if (good_address == NULL ||  num_good_addr == 0) {
-		printf("Test requires -d  and -n\n");
+		printf("Test requires -g and -n\n");
 		return EXIT_FAILURE;
 	}
 
@@ -1041,25 +1037,27 @@ int main(int argc, char **argv)
 	hints->mode = ~0;
 	hints->addr_format = FI_SOCKADDR;
 
+	// TODO make this test accept endpoint type argument
 	hints->ep_attr->type = FI_EP_RDM;
-	ret = fi_getinfo(FT_FIVERSION, src_addr_str, 0, FI_SOURCE, hints, &fi);
-	if (ret != 0 && ret != -FI_ENODATA) {
-		printf("fi_getinfo %s\n", fi_strerror(-ret));
+	ret = fi_getinfo(FT_FIVERSION, opts.src_addr, 0, FI_SOURCE, hints, &fi);
+
+	if (ret && ret != -FI_ENODATA) {
+		FT_PRINTERR("fi_getinfo", ret);
 		goto err;
 	}
 
 	if (ret == -FI_ENODATA) {
 		hints->ep_attr->type = FI_EP_DGRAM;
-		ret = fi_getinfo(FT_FIVERSION, src_addr_str, 0, FI_SOURCE, hints, &fi);
-		if (ret != 0) {
-			printf("fi_getinfo %s\n", fi_strerror(-ret));
+		ret = fi_getinfo(FT_FIVERSION, opts.src_addr, 0, FI_SOURCE, hints, &fi);
+		if (ret) {
+			FT_PRINTERR("fi_getinfo", ret);
 			goto err;
 		}
 	}
 
 	ret = ft_open_fabric_res();
 	if (ret)
-		return ret;
+		goto err;
 
 	printf("Testing AVs on fabric %s\n", fi->fabric_attr->name);
 	failed = 0;
@@ -1067,26 +1065,24 @@ int main(int argc, char **argv)
 	if (fi->domain_attr->av_type == FI_AV_UNSPEC ||
 	    fi->domain_attr->av_type == FI_AV_MAP) {
 		av_type = FI_AV_MAP;
-		printf("Testing with type = FI_AV_MAP\n");
+		printf("\nTesting with type = FI_AV_MAP\n");
 		failed += run_test_set();
 	}
 
 	if (fi->domain_attr->av_type == FI_AV_UNSPEC ||
 	    fi->domain_attr->av_type == FI_AV_TABLE) {
 		av_type = FI_AV_TABLE;
-		printf("Testing with type = FI_AV_TABLE\n");
+		printf("\nTesting with type = FI_AV_TABLE\n");
 		failed += run_test_set();
 	}
 
 	if (failed > 0) {
-		printf("Summary: %d tests failed\n", failed);
+		printf("\nSummary: %d tests failed\n", failed);
 	} else {
-		printf("Summary: all tests passed\n");
+		printf("\nSummary: all tests passed\n");
 	}
 
-	ft_free_res();
-	return (failed > 0);
 err:
 	ft_free_res();
-	return -ret;
+	return ret ? ft_exit_code(ret) : (failed > 0) ? EXIT_FAILURE : EXIT_SUCCESS;
 }

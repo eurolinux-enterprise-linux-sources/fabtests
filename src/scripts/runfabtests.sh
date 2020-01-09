@@ -2,6 +2,7 @@
 
 #
 # Copyright (c) 2016, Cisco Systems, Inc. All rights reserved.
+# Copyright (c) 2016, Cray, Inc. All rights reserved.
 #
 # This software is available to you under a choice of one of two
 # licenses.  You may choose to be licensed under the terms of the GNU
@@ -59,33 +60,41 @@ declare -i skip_count=0
 declare -i pass_count=0
 declare -i fail_count=0
 
-# OS X defines NODATA differently than Linux, this
-# is a hack to work around that.
-function no_data_num {
-	if [[ "$(uname)" == "Linux" ]]; then
-		echo 61
-	elif [[ "$(uname)" == "FreeBSD" ]]; then
-		echo 83
-	elif [[ "$(uname)" == "Darwin" ]]; then
-		echo 96
-	else
-		echo 61
-	fi
-}
-declare -ri FI_ENODATA=$(no_data_num)
+if [[ "$(uname)" == "FreeBSD" ]]; then
+    declare -ri FI_ENODATA=$(python -c 'import errno; print(errno.ENOMSG)')
+else
+    declare -ri FI_ENODATA=$(python -c 'import errno; print(errno.ENODATA)')
+fi
+declare -ri FI_ENOSYS=$(python -c 'import errno; print(errno.ENOSYS)')
+
+neg_unit_tests=(
+	"dgram g00n13s"
+	"rdm g00n13s"
+	"msg g00n13s"
+)
 
 simple_tests=(
+	"cm_data"
 	"cq_data"
 	"dgram"
 	"dgram_waitset"
 	"msg"
 	"msg_epoll"
 	"msg_sockets"
-	"poll"
+	"poll -t queue"
+	"poll -t counter"
 	"rdm"
 	"rdm_rma_simple"
 	"rdm_rma_trigger"
-	"rdm_shared_ctx"
+	"shared_ctx"
+	"shared_ctx --no-tx-shared-ctx"
+	"shared_ctx --no-rx-shared-ctx"
+	"shared_ctx -e msg"
+	"shared_ctx -e msg --no-tx-shared-ctx"
+	"shared_ctx -e msg --no-rx-shared-ctx"
+	"shared_ctx -e dgram"
+	"shared_ctx -e dgram --no-tx-shared-ctx"
+	"shared_ctx -e dgram --no-rx-shared-ctx"
 	"rdm_tagged_peek"
 	"scalable_ep"
 	"cmatose"
@@ -94,9 +103,17 @@ simple_tests=(
 
 short_tests=(
 	"msg_pingpong -I 5"
+	"msg_bw -I 5"
+	"rma_bw -e msg -o write -I 5"
+	"rma_bw -e msg -o read -I 5"
+	"rma_bw -e msg -o writedata -I 5"
+	"rma_bw -e rdm -o write -I 5"
+	"rma_bw -e rdm -o read -I 5"
+	"rma_bw -e rdm -o writedata -I 5"
 	"msg_rma -o write -I 5"
 	"msg_rma -o read -I 5"
 	"msg_rma -o writedata -I 5"
+	"msg_stream -I 5"
 	"rdm_atomic -I 5 -o all"
 	"rdm_cntr_pingpong -I 5"
 	"rdm_multi_recv -I 5"
@@ -114,18 +131,26 @@ short_tests=(
 standard_tests=(
 	"msg_pingpong"
 	"msg_pingpong -v"
-	"msg_pingpong -P"
-	"msg_pingpong -P -v"
+	"msg_pingpong -k"
+	"msg_pingpong -k -v"
+	"msg_bw"
+	"rma_bw -e msg -o write"
+	"rma_bw -e msg -o read"
+	"rma_bw -e msg -o writedata"
+	"rma_bw -e rdm -o write"
+	"rma_bw -e rdm -o read"
+	"rma_bw -e rdm -o writedata"
 	"msg_rma -o write"
 	"msg_rma -o read"
 	"msg_rma -o writedata"
+	"msg_stream"
 	"rdm_atomic -o all -I 1000"
 	"rdm_cntr_pingpong"
 	"rdm_multi_recv"
 	"rdm_pingpong"
 	"rdm_pingpong -v"
-	"rdm_pingpong -P"
-	"rdm_pingpong -P -v"
+	"rdm_pingpong -k"
+	"rdm_pingpong -k -v"
 	"rdm_rma -o write"
 	"rdm_rma -o read"
 	"rdm_rma -o writedata"
@@ -133,15 +158,18 @@ standard_tests=(
 	"rdm_tagged_bw"
 	"dgram_pingpong"
 	"dgram_pingpong -v"
-	"dgram_pingpong -P"
-	"dgram_pingpong -P -v"
+	"dgram_pingpong -k"
+	"dgram_pingpong -k -v"
 	"rc_pingpong"
 )
 
 unit_tests=(
-	"av_test -d GOOD_ADDR -n 1 -s SERVER_ADDR"
+	"getinfo_test"
+	"av_test -g GOOD_ADDR -n 1 -s SERVER_ADDR"
 	"dom_test -n 2"
 	"eq_test"
+	"cq_test"
+	"mr_test"
 	"size_left_test"
 )
 
@@ -162,7 +190,9 @@ function print_results {
 	local test_result=$2
 	local test_time=$3
 	local server_out_file=$4
-	local client_out_file=$5
+	local server_cmd=$5
+	local client_out_file=$6
+	local client_cmd=$7
 
 	if [ $VERBOSE -eq 0 ] ; then
 		# print a simple, single-line format that is still valid YAML
@@ -188,10 +218,16 @@ function print_results {
 		printf -- "  result: %s\n" "$test_result"
 		printf -- "  time:   %s\n" "$test_time"
 		if [ $emit_stdout -eq 1 -a "$server_out_file" != "" ] ; then
+			if [ "$server_cmd" != "" ] ; then
+				printf -- "  server_cmd: %s\n" "$server_cmd"
+			fi
 			printf -- "  server_stdout: |\n"
 			sed -e 's/^/    /' < $server_out_file
 		fi
 		if [ $emit_stdout -eq 1 -a "$client_out_file" != "" ] ; then
+			if [ "$client_cmd" != "" ] ; then
+				printf -- "  client_cmd: %s\n" "$client_cmd"
+			fi
 			printf -- "  client_stdout: |\n"
 			sed -e 's/^/    /' < $client_out_file
 		fi
@@ -230,8 +266,9 @@ function is_excluded {
 
 function unit_test {
 	local test=$1
+	local is_neg=$2
 	local ret1=0
-	local test_exe=$(echo "fi_${test} -f $PROV" | \
+	local test_exe=$(echo "fi_${test} -p $PROV" | \
 	    sed -e "s/GOOD_ADDR/$GOOD_ADDR/g" -e "s/SERVER_ADDR/${S_INTERFACE}/g")
 	local start_time
 	local end_time
@@ -246,26 +283,34 @@ function unit_test {
 
 	start_time=$(date '+%s')
 
-	${SERVER_CMD} "${BIN_PATH}${test_exe}" &> $s_outp &
+	cmd="${BIN_PATH}${test_exe}"
+	${SERVER_CMD} "$cmd" &> $s_outp &
 	p1=$!
 
 	wait $p1
-	ret1=$?
+	ret=$?
 
 	end_time=$(date '+%s')
 	test_time=$(compute_duration "$start_time" "$end_time")
 
-	if [ $ret1 -eq $FI_ENODATA ]; then
-		print_results "$test_exe" "Notrun" "$test_time" "$s_outp"
+	if [ $is_neg -eq 1 -a $ret -eq $FI_ENODATA ]; then
+		# negative test passed
+		ret=0
+	elif [ $is_neg -eq 1 ]; then
+		# negative test failed
+		ret=1
+	fi
+	if [[ $ret -eq $FI_ENODATA || $ret -eq $FI_ENOSYS ]]; then
+		print_results "$test_exe" "Notrun" "$test_time" "$s_outp" "$cmd"
 		skip_count+=1
-	elif [ $ret1 -ne 0 ]; then
-		print_results "$test_exe" "Fail" "$test_time" "$s_outp"
-		if [ $ret1 -eq 124 ]; then
+	elif [ $ret -ne 0 ]; then
+		print_results "$test_exe" "Fail" "$test_time" "$s_outp" "$cmd"
+		if [ $ret -eq 124 ]; then
 			cleanup
 		fi
 		fail_count+=1
 	else
-		print_results "$test_exe" "Pass" "$test_time" "$s_outp"
+		print_results "$test_exe" "Pass" "$test_time" "$s_outp" "$cmd"
 		pass_count+=1
 	fi
 }
@@ -274,7 +319,7 @@ function cs_test {
 	local test=$1
 	local ret1=0
 	local ret2=0
-	local test_exe="fi_${test} -f ${PROV}"
+	local test_exe="fi_${test} -p ${PROV}"
 	local start_time
 	local end_time
 	local test_time
@@ -288,11 +333,13 @@ function cs_test {
 
 	start_time=$(date '+%s')
 
-	${SERVER_CMD} "${BIN_PATH}${test_exe} -s $S_INTERFACE" &> $s_outp &
+	s_cmd="${BIN_PATH}${test_exe} -s $S_INTERFACE"
+	${SERVER_CMD} "$s_cmd" &> $s_outp &
 	p1=$!
 	sleep 1
 
-	${CLIENT_CMD} "${BIN_PATH}${test_exe} -s $C_INTERFACE $S_INTERFACE" &> $c_outp &
+	c_cmd="${BIN_PATH}${test_exe} -s $C_INTERFACE $S_INTERFACE"
+	${CLIENT_CMD} "$c_cmd" &> $c_outp &
 	p2=$!
 
 	wait $p1
@@ -304,17 +351,18 @@ function cs_test {
 	end_time=$(date '+%s')
 	test_time=$(compute_duration "$start_time" "$end_time")
 
-	if [ $ret1 -eq $FI_ENODATA -a $ret2 -eq $FI_ENODATA ]; then
-		print_results "$test_exe" "Notrun" "$test_time" "$s_outp" "$c_outp"
+	if [[ $ret1 -eq $FI_ENODATA && $ret2 -eq $FI_ENODATA ]] ||
+	   [[ $ret1 -eq $FI_ENOSYS && $ret2 -eq $FI_ENOSYS ]]; then
+		print_results "$test_exe" "Notrun" "$test_time" "$s_outp" "$s_cmd" "$c_outp" "$c_cmd"
 		skip_count+=1
 	elif [ $ret1 -ne 0 -o $ret2 -ne 0 ]; then
-		print_results "$test_exe" "Fail" "$test_time" "$s_outp" "$c_outp"
+		print_results "$test_exe" "Fail" "$test_time" "$s_outp" "$s_cmd" "$c_outp" "$c_cmd"
 		if [ $ret1 -eq 124 -o $ret2 -eq 124 ]; then
 			cleanup
 		fi
 		fail_count+=1
 	else
-		print_results "$test_exe" "Pass" "$test_time" "$s_outp" "$c_outp"
+		print_results "$test_exe" "Pass" "$test_time" "$s_outp" "$s_cmd" "$c_outp" "$c_cmd"
 		pass_count+=1
 	fi
 }
@@ -338,11 +386,13 @@ function complex_test {
 
 	start_time=$(date '+%s')
 
-	FI_LOG_LEVEL=error ${SERVER_CMD} "${BIN_PATH}${test_exe} -s $S_INTERFACE -x" &> $s_outp &
+	s_cmd="${BIN_PATH}${test_exe} -s $S_INTERFACE -x"
+	FI_LOG_LEVEL=error ${SERVER_CMD} "$s_cmd" &> $s_outp &
 	p1=$!
 	sleep 1
 
-	FI_LOG_LEVEL=error ${CLIENT_CMD} "${BIN_PATH}${test_exe} -s $C_INTERFACE -f ${PROV} -t $config $S_INTERFACE" &> $c_outp &
+	c_cmd="${BIN_PATH}${test_exe} -s $C_INTERFACE -p ${PROV} -t $config $S_INTERFACE"
+	FI_LOG_LEVEL=error ${CLIENT_CMD} "$c_cmd" &> $c_outp &
 	p2=$!
 
 	wait $p2
@@ -356,14 +406,14 @@ function complex_test {
 
 	# case: config file doesn't exist or invalid option provided
 	if [ $ret1 -eq 1 -o $ret2 -eq 1 ]; then
-		print_results "$test_exe" "Notrun" "0" "$s_outp" "$c_outp"
+		print_results "$test_exe" "Notrun" "0" "$s_outp" "$s_cmd" "$c_outp" "$c_cmd"
 		cleanup
 		skip_count+=1
 		return
 	# case: test didn't run becasue some error occured
 	elif [ $ret1 -ne 0 -o $ret2 -ne 0 ]; then
 		printf "%-50s%s\n" "$test_exe:" "Server returns $ret1, client returns $ret2"
-		print_results "$test_exe" "Fail [$f_cnt/$total]" "$test_time" "$s_outp" "$c_outp"
+		print_results "$test_exe" "Fail [$f_cnt/$total]" "$test_time" "$s_outp" "$s_cmd" "$c_outp" "$c_cmd"
                 cleanup
                 fail_count+=1
 	else
@@ -371,10 +421,10 @@ function complex_test {
 		local s_cnt=$(cat $c_outp | awk -F': ' '/Success/ {total += $2} END {print total}')
 		local total=$(cat $c_outp | awk -F': ' '/Success|ENODATA|ENOSYS|ERROR/ {total += $2} END {print total}')
 		if [ $f_cnt -eq 0 ]; then
-			print_results "$test_exe" "Pass [$s_cnt/$total]" "$test_time" "$s_outp" "$c_outp"
+			print_results "$test_exe" "Pass [$s_cnt/$total]" "$test_time" "$s_outp" "$s_cmd" "$c_outp" "$c_cmd"
 			pass_count+=1
 		else
-			print_results "$test_exe" "Fail [$f_cnt/$total]" "$test_time" "$s_outp" "$c_outp"
+			print_results "$test_exe" "Fail [$f_cnt/$total]" "$test_time" "$s_outp" "$s_cmd" "$c_outp" "$c_cmd"
 			cleanup
 			fail_count+=1
 		fi
@@ -406,7 +456,11 @@ function main {
 	case ${ts} in
 		unit)
 			for test in "${unit_tests[@]}"; do
-				unit_test "$test"
+				unit_test "$test" "0"
+			done
+
+			for test in "${neg_unit_tests[@]}"; do
+				unit_test "$test" "1"
 			done
 		;;
 		simple)

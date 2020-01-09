@@ -29,62 +29,24 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <getopt.h>
-#include <time.h>
-#include <netdb.h>
-#include <unistd.h>
 
-#include <rdma/fabric.h>
 #include <rdma/fi_errno.h>
-#include <rdma/fi_endpoint.h>
-#include <rdma/fi_cm.h>
 
 #include <shared.h>
 #include "benchmark_shared.h"
-
-static int init_fabric(void)
-{
-	uint64_t flags = 0;
-	char *node, *service;
-	int ret;
-
-	ret = ft_read_addr_opts(&node, &service, hints, &flags, &opts);
-	if (ret)
-		return ret;
-
-	ret = fi_getinfo(FT_FIVERSION, node, service, flags, hints, &fi);
-	if (ret) {
-		FT_PRINTERR("fi_getinfo", ret);
-		return ret;
-	}
-
-	ret = ft_open_fabric_res();
-	if (ret)
-		return ret;
-
-	ret = ft_alloc_active_res(fi);
-	if (ret)
-		return ret;
-
-	ret = ft_init_ep();
-	if (ret)
-		return ret;
-
-	return 0;
-}
 
 static int run(void)
 {
 	int i, ret = 0;
 
-	ret = init_fabric();
+	ret = ft_init_fabric();
 	if (ret)
 		return ret;
 
-	ret = ft_init_av();
+	ret = ft_bw_init();
 	if (ret)
-		goto out;
+		return ret;
 
 	if (!(opts.options & FT_OPT_SIZE)) {
 		for (i = 0; i < TEST_CNT; i++) {
@@ -113,6 +75,7 @@ int main(int argc, char **argv)
 	int op, ret;
 
 	opts = INIT_OPTS;
+	opts.options |= FT_OPT_BW;
 
 	hints = fi_allocinfo();
 	if (!hints)
@@ -127,7 +90,7 @@ int main(int argc, char **argv)
 			break;
 		case '?':
 		case 'h':
-			ft_csusage(argv[0], "Ping pong client and server using tagged messages.");
+			ft_csusage(argv[0], "Bandwidth test for RDM endpoints using tagged messages.");
 			ft_benchmark_usage();
 			return EXIT_FAILURE;
 		}
@@ -139,10 +102,10 @@ int main(int argc, char **argv)
 	hints->ep_attr->type = FI_EP_RDM;
 	hints->domain_attr->resource_mgmt = FI_RM_ENABLED;
 	hints->caps = FI_TAGGED;
-	hints->mode = FI_LOCAL_MR;
+	hints->mode = FI_LOCAL_MR | FI_CONTEXT;
 
 	ret = run();
 
 	ft_free_res();
-	return -ret;
+	return ft_exit_code(ret);
 }

@@ -33,23 +33,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
 #include <getopt.h>
-#include <poll.h>
-#include <time.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <inttypes.h>
 #include <limits.h>
 
-#include <rdma/fabric.h>
-#include <rdma/fi_domain.h>
 #include <rdma/fi_errno.h>
-#include <rdma/fi_endpoint.h>
-#include <rdma/fi_cm.h>
 
 #include "shared.h"
 #include "unit_common.h"
@@ -63,6 +50,12 @@ static struct fid_domain **domain_vec = NULL;
  * - test open and close of a domain
  */
 
+static void usage(void)
+{
+	ft_unit_usage("dom_test", "Unit test for Domain");
+	FT_PRINT_OPTS_USAGE("-n <num_domains>", "num domains to open");
+}
+
 int main(int argc, char **argv)
 {
 	unsigned long i;
@@ -71,15 +64,11 @@ int main(int argc, char **argv)
 	char *ptr;
 
 	hints = fi_allocinfo();
-	if (hints == NULL)
-		exit(EXIT_FAILURE);
+	if (!hints)
+		return EXIT_FAILURE;
 
-	while ((op = getopt(argc, argv, "f:a:n:")) != -1) {
+	while ((op = getopt(argc, argv, FAB_OPTS "n:h")) != -1) {
 		switch (op) {
-		case 'a':
-			free(hints->fabric_attr->name);
-			hints->fabric_attr->name = strdup(optarg);
-			break;
 		case 'n':
 			errno = 0;
 			num_domains = strtol(optarg, &ptr, 10);
@@ -89,24 +78,21 @@ int main(int argc, char **argv)
 				goto out;
 			}
 			break;
-		case 'f':
-			free(hints->fabric_attr->prov_name);
-			hints->fabric_attr->prov_name = strdup(optarg);
-			break;
 		default:
-			printf("usage: %s\n", argv[0]);
-			printf("\t[-a fabric_name]\n");
-			printf("\t[-f provider_name]\n");
-			printf("\t[-n num domains to open]\n");
-			exit(EXIT_FAILURE);
+			ft_parseinfo(op, optarg, hints);
+			break;
+		case '?':
+		case 'h':
+			usage();
+			return EXIT_FAILURE;
 		}
 	}
 
 	hints->mode = ~0;
 
 	ret = fi_getinfo(FT_FIVERSION, NULL, 0, 0, hints, &fi);
-	if (ret != 0) {
-		printf("fi_getinfo %s\n", fi_strerror(-ret));
+	if (ret) {
+		FT_PRINTERR("fi_getinfo", ret);
 		goto out;
 	}
 
@@ -117,6 +103,7 @@ int main(int argc, char **argv)
 	domain_vec = calloc(num_domains, sizeof(*domain_vec));
 	if (domain_vec == NULL) {
 		perror("malloc");
+		ret = EXIT_FAILURE;
 		goto out;
 	}
 
@@ -141,5 +128,5 @@ int main(int argc, char **argv)
 	free(domain_vec);
 out:
 	ft_free_res();
-	return -ret;
+	return ft_exit_code(ret);
 }

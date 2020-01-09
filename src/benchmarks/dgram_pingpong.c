@@ -33,62 +33,19 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <getopt.h>
-#include <time.h>
-#include <netdb.h>
-#include <unistd.h>
-#include <arpa/inet.h>
 
-#include <rdma/fabric.h>
 #include <rdma/fi_errno.h>
 #include <rdma/fi_endpoint.h>
-#include <rdma/fi_cm.h>
 
 #include "shared.h"
 #include "benchmark_shared.h"
-
-
-static int common_setup(void)
-{
-	int ret;
-	uint64_t flags = 0;
-	char *node, *service;
-
-	ret = ft_read_addr_opts(&node, &service, hints, &flags, &opts);
-	if (ret)
-		return ret;
-
-	ret = fi_getinfo(FT_FIVERSION, node, service, flags, hints, &fi);
-	if (ret) {
-		FT_PRINTERR("fi_getinfo", ret);
-		return ret;
-	}
-
-	ret = ft_open_fabric_res();
-	if (ret)
-		return ret;
-
-	ret = ft_alloc_active_res(fi);
-	if (ret)
-		return ret;
-
-	ret = ft_init_ep();
-	if (ret)
-		return ret;
-
-	ret = ft_init_av();
-	if (ret)
-		return ret;
-
-	return 0;
-}
 
 static int run(void)
 {
 	int i, ret;
 
-	ret = common_setup();
+	ret = ft_init_fabric();
 	if (ret)
 		return ret;
 
@@ -167,5 +124,5 @@ int main(int argc, char **argv)
 	ret = run();
 
 	ft_free_res();
-	return -ret;
+	return ft_exit_code(ret);
 }

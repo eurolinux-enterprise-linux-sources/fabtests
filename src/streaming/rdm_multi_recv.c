@@ -29,16 +29,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <getopt.h>
-#include <time.h>
-#include <netdb.h>
-#include <unistd.h>
 
-#include <rdma/fabric.h>
 #include <rdma/fi_errno.h>
 #include <rdma/fi_endpoint.h>
 #include <rdma/fi_cm.h>
+
 #include <shared.h>
 
 // MULTI_BUF_SIZE_FACTOR defines how large the multi recv buffer will be.
@@ -90,11 +86,11 @@ static int sync_test(void)
 {
 	int ret;
 
-	ret = opts.dst_addr ? ft_tx(1) : wait_for_recv_completion(1);
+	ret = opts.dst_addr ? ft_tx(ep, remote_fi_addr, 1, &tx_ctx) : wait_for_recv_completion(1);
 	if (ret)
 		return ret;
 
-	ret = opts.dst_addr ? wait_for_recv_completion(1) : ft_tx(1);
+	ret = opts.dst_addr ? wait_for_recv_completion(1) : ft_tx(ep, remote_fi_addr, 1, &tx_ctx);
 	return ret;
 }
 
@@ -132,7 +128,7 @@ static int run_test(void)
 	ft_start();
 	if (opts.dst_addr) {
 		for (i = 0; i < opts.iterations; i++) {
-			ret = ft_tx(opts.transfer_size);
+			ret = ft_tx(ep, remote_fi_addr, opts.transfer_size, &tx_ctx);
 			if (ret)
 				goto out;
 		}
@@ -218,19 +214,11 @@ static int alloc_ep_res(struct fi_info *fi)
 
 static int init_fabric(void)
 {
-	uint64_t flags = 0;
-	char *node, *service;
 	int ret;
 
-	ret = ft_read_addr_opts(&node, &service, hints, &flags, &opts);
+	ret = ft_getinfo(hints, &fi);
 	if (ret)
 		return ret;
-
-	ret = fi_getinfo(FT_FIVERSION, node, service, flags, hints, &fi);
-	if (ret) {
-		FT_PRINTERR("fi_getinfo", ret);
-		return ret;
-	}
 
 	// set FI_MULTI_RECV flag for all recv operations
 	fi->rx_attr->op_flags = FI_MULTI_RECV;
@@ -273,7 +261,7 @@ static int init_av(void)
 			return ret;
 		}
 
-		ret = ft_tx(addrlen);
+		ret = ft_tx(ep, remote_fi_addr, addrlen, &tx_ctx);
 		if (ret)
 			return ret;
 	} else {
@@ -304,7 +292,7 @@ static int run(void)
 	ret = run_test();
 
 	rx_seq++;
-	ft_finalize(fi, ep, txcq, rxcq, remote_fi_addr);
+	ft_finalize();
 out:
 	return ret;
 }
@@ -328,7 +316,7 @@ int main(int argc, char **argv)
 			break;
 		case '?':
 		case 'h':
-			ft_csusage(argv[0], "Ping pong client and server using message endpoints.");
+			ft_csusage(argv[0], "Streaming RDM client-server using multi recv buffer.");
 			return EXIT_FAILURE;
 		}
 	}
@@ -346,5 +334,5 @@ int main(int argc, char **argv)
 
 	free_res();
 	ft_free_res();
-	return -ret;
+	return ft_exit_code(ret);
 }

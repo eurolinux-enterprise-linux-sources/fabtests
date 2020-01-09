@@ -36,18 +36,12 @@
 #include <errno.h>
 #include <getopt.h>
 #include <poll.h>
-#include <time.h>
 #include <string.h>
 
-#include <rdma/fabric.h>
-#include <rdma/fi_domain.h>
 #include <rdma/fi_errno.h>
-#include <rdma/fi_endpoint.h>
-#include <rdma/fi_cm.h>
 
 #include "unit_common.h"
 #include "shared.h"
-
 
 static char err_buf[512];
 
@@ -547,15 +541,20 @@ fail:
 }
 
 struct test_entry test_array[] = {
-	TEST_ENTRY(eq_open_close),
-	TEST_ENTRY(eq_write_read_self),
-	TEST_ENTRY(eq_write_overflow),
-	TEST_ENTRY(eq_wait_fd_poll),
-	TEST_ENTRY(eq_wait_fd_sread),
-	TEST_ENTRY(eq_wait_read_peek),
-	TEST_ENTRY(eq_wait_sread_peek),
+	TEST_ENTRY(eq_open_close, "Test open and close of EQ for various sizes"),
+	TEST_ENTRY(eq_write_read_self, "Test writing and reading to EQ"),
+	TEST_ENTRY(eq_write_overflow, "Test writing # of entries that exceed EQ size"),
+	TEST_ENTRY(eq_wait_fd_poll, "Test polling on fd extracted from EQ"),
+	TEST_ENTRY(eq_wait_fd_sread, "Test EQ sread"),
+	TEST_ENTRY(eq_wait_read_peek, "Test EQ read with FI_PEEK"),
+	TEST_ENTRY(eq_wait_sread_peek, "Test EQ sread with FI_PEEK"),
 	{ NULL, "" }
 };
+
+static void usage(void)
+{
+	ft_unit_usage("eq_test", "Unit test for Event Queue (EQ)");
+}
 
 int main(int argc, char **argv)
 {
@@ -564,38 +563,32 @@ int main(int argc, char **argv)
 
 	hints = fi_allocinfo();
 	if (!hints)
-		exit(1);
+		return EXIT_FAILURE;
 
-	while ((op = getopt(argc, argv, "f:a:")) != -1) {
+	while ((op = getopt(argc, argv, FAB_OPTS "h")) != -1) {
 		switch (op) {
-		case 'a':
-			free(hints->fabric_attr->name);
-			hints->fabric_attr->name = strdup(optarg);
-			break;
-		case 'f':
-			free(hints->fabric_attr->prov_name);
-			hints->fabric_attr->prov_name = strdup(optarg);
-			break;
 		default:
-			printf("usage: %s\n", argv[0]);
-			printf("\t[-a fabric_name]\n");
-			printf("\t[-f provider_name]\n");
-			exit(1);
+			ft_parseinfo(op, optarg, hints);
+			break;
+		case '?':
+		case 'h':
+			usage();
+			return EXIT_FAILURE;
 		}
 	}
 
 	hints->mode = ~0;
 
 	ret = fi_getinfo(FT_FIVERSION, NULL, 0, 0, hints, &fi);
-	if (ret != 0) {
-		printf("fi_getinfo %s\n", fi_strerror(-ret));
-		exit(-ret);
+	if (ret) {
+		FT_PRINTERR("fi_getinfo", ret);
+		goto err;
 	}
 
 	ret = fi_fabric(fi->fabric_attr, &fabric, NULL);
-	if (ret != 0) {
-		printf("fi_fabric %s\n", fi_strerror(-ret));
-		exit(1);
+	if (ret) {
+		FT_PRINTERR("fi_getinfo", ret);
+		goto err;
 	}
 
 	printf("Testing EQs on fabric %s\n", fi->fabric_attr->name);
@@ -607,6 +600,7 @@ int main(int argc, char **argv)
 		printf("Summary: all tests passed\n");
 	}
 
+err:
 	ft_free_res();
-	exit(failed > 0);
+	return ret ? ft_exit_code(ret) : (failed > 0) ? EXIT_FAILURE : EXIT_SUCCESS;
 }

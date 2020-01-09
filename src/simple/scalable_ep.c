@@ -31,16 +31,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
-#include <time.h>
-#include <netdb.h>
-#include <unistd.h>
 
-#include <rdma/fabric.h>
 #include <rdma/fi_errno.h>
 #include <rdma/fi_endpoint.h>
 #include <rdma/fi_cm.h>
+
 #include <shared.h>
-#include <math.h>
 
 
 static int ctx_cnt = 2;
@@ -50,7 +46,6 @@ static struct fid_ep **tx_ep, **rx_ep;
 static struct fid_cq **txcq_array;
 static struct fid_cq **rxcq_array;
 static fi_addr_t *remote_rx_addr;
-
 
 static void free_res(void)
 {
@@ -81,16 +76,13 @@ static int alloc_ep_res(struct fid_ep *sep)
 	int i, ret;
 
 	/* Get number of bits needed to represent ctx_cnt */
-	while (ctx_cnt >> ++rx_ctx_bits)
-		;
+	while (ctx_cnt >> ++rx_ctx_bits);
 
 	av_attr.rx_ctx_bits = rx_ctx_bits;
 
-	ret = ft_alloc_active_res(fi);
+	ret = ft_alloc_ep_res(fi);
 	if (ret)
 		return ret;
-	/* Closes non-scalable endpoint that was allocated in the common code */
-	FT_CLOSE_FID(ep);
 
 	txcq_array = calloc(ctx_cnt, sizeof *txcq_array);
 	rxcq_array = calloc(ctx_cnt, sizeof *rxcq_array);
@@ -118,7 +110,7 @@ static int alloc_ep_res(struct fid_ep *sep)
 
 		ret = fi_rx_context(sep, i, NULL, &rx_ep[i], NULL);
 		if (ret) {
-			FT_PRINTERR("fi_tx_context", ret);
+			FT_PRINTERR("fi_rx_context", ret);
 			return ret;
 		}
 
@@ -138,7 +130,7 @@ static int bind_ep_res(void)
 
 	ret = fi_scalable_ep_bind(sep, &av->fid, 0);
 	if (ret) {
-		FT_PRINTERR("fi_ep_bind", ret);
+		FT_PRINTERR("fi_scalable_ep_bind", ret);
 		return ret;
 	}
 
@@ -177,6 +169,12 @@ static int bind_ep_res(void)
 		}
 	}
 
+	ret = fi_enable(sep);
+	if (ret) {
+		FT_PRINTERR("fi_enable", ret);
+		return ret;
+	}
+
 	return 0;
 }
 
@@ -197,14 +195,20 @@ static int wait_for_comp(struct fid_cq *cq)
 	return ret;
 }
 
+#define DATA 0x12345670
+
 static int run_test()
 {
 	int ret = 0, i;
+	uint32_t data;
+	uint32_t *tb = (uint32_t *)tx_buf;
+	uint32_t *rb = (uint32_t *)rx_buf;
 
 	if (opts.dst_addr) {
 		for (i = 0; i < ctx_cnt && !ret; i++) {
 			fprintf(stdout, "Posting send for ctx: %d\n", i);
-			ret = fi_send(tx_ep[i], buf, tx_size, fi_mr_desc(mr),
+			tb[0] = DATA + i;
+			ret = fi_send(tx_ep[i], tx_buf, tx_size, fi_mr_desc(mr),
 					remote_rx_addr[i], NULL);
 			if (ret) {
 				FT_PRINTERR("fi_send", ret);
@@ -217,6 +221,12 @@ static int run_test()
 		for (i = 0; i < ctx_cnt && !ret; i++) {
 			fprintf(stdout, "wait for recv completion for ctx: %d\n", i);
 			ret = wait_for_comp(rxcq_array[i]);
+
+			data = DATA + i;
+			if (memcmp(&data, rx_buf, 4) != 0) {
+				fprintf(stdout, "failed compare expected 0x%x,"
+					" read 0x%x\n", data, rb[0]);
+			}
 		}
 	}
 
@@ -225,19 +235,11 @@ static int run_test()
 
 static int init_fabric(void)
 {
-	uint64_t flags = 0;
-	char *node, *service;
 	int ret;
 
-	ret = ft_read_addr_opts(&node, &service, hints, &flags, &opts);
+	ret = ft_getinfo(hints, &fi);
 	if (ret)
 		return ret;
-
-	ret = fi_getinfo(FT_FIVERSION, node, service, flags, hints, &fi);
-	if (ret) {
-		FT_PRINTERR("fi_getinfo", ret);
-		return ret;
-	}
 
 	/* Check the optimal number of TX and RX contexts supported by the provider */
 	ctx_cnt = MIN(ctx_cnt, fi->domain_attr->tx_ctx_cnt);
@@ -383,5 +385,5 @@ int main(int argc, char **argv)
 	/* Closes the scalable ep that was allocated in the test */
 	FT_CLOSE_FID(sep);
 	ft_free_res();
-	return -ret;
+	return ft_exit_code(ret);
 }

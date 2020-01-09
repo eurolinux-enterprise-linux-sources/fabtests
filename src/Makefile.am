@@ -14,23 +14,30 @@ bin_PROGRAMS = \
 	simple/fi_cq_data \
 	simple/fi_poll \
 	simple/fi_scalable_ep \
-	simple/fi_rdm_shared_ctx \
+	simple/fi_shared_ctx \
 	simple/fi_msg_epoll \
 	simple/fi_rdm_shared_av \
+	simple/fi_cm_data \
 	streaming/fi_msg_rma \
 	streaming/fi_rdm_atomic \
 	streaming/fi_rdm_multi_recv \
 	streaming/fi_rdm_rma \
+	streaming/fi_msg_stream \
 	benchmarks/fi_msg_pingpong \
+	benchmarks/fi_msg_bw \
+	benchmarks/fi_rma_bw \
 	benchmarks/fi_rdm_cntr_pingpong \
 	benchmarks/fi_dgram_pingpong \
 	benchmarks/fi_rdm_pingpong \
 	benchmarks/fi_rdm_tagged_pingpong \
 	benchmarks/fi_rdm_tagged_bw \
 	unit/fi_eq_test \
+	unit/fi_cq_test \
+	unit/fi_mr_test \
 	unit/fi_av_test \
 	unit/fi_size_left_test \
 	unit/fi_dom_test \
+	unit/fi_getinfo_test \
 	ported/libibverbs/fi_rc_pingpong \
 	ported/librdmacm/fi_cmatose \
 	complex/fi_ubertest
@@ -63,7 +70,10 @@ libfabtests_la_SOURCES = \
 
 if MACOS
 libfabtests_la_SOURCES += include/osx/osd.h
+
+if !HAVE_CLOCK_GETTIME
 libfabtests_la_SOURCES += common/osx/osd.c
+endif
 endif
 
 simple_fi_msg_sockets_SOURCES = \
@@ -110,13 +120,17 @@ simple_fi_cq_data_SOURCES = \
 	simple/cq_data.c
 simple_fi_cq_data_LDADD = libfabtests.la
 
+simple_fi_cm_data_SOURCES = \
+	simple/cm_data.c
+simple_fi_cm_data_LDADD = libfabtests.la
+
 simple_fi_scalable_ep_SOURCES = \
 	simple/scalable_ep.c
 simple_fi_scalable_ep_LDADD = libfabtests.la
 
-simple_fi_rdm_shared_ctx_SOURCES = \
-	simple/rdm_shared_ctx.c
-simple_fi_rdm_shared_ctx_LDADD = libfabtests.la
+simple_fi_shared_ctx_SOURCES = \
+	simple/shared_ctx.c
+simple_fi_shared_ctx_LDADD = libfabtests.la
 
 simple_fi_poll_SOURCES = \
 	simple/poll.c
@@ -125,6 +139,10 @@ simple_fi_poll_LDADD = libfabtests.la
 streaming_fi_msg_rma_SOURCES = \
 	streaming/msg_rma.c
 streaming_fi_msg_rma_LDADD = libfabtests.la
+
+streaming_fi_msg_stream_SOURCES = \
+	streaming/msg.c
+streaming_fi_msg_stream_LDADD = libfabtests.la
 
 streaming_fi_rdm_atomic_SOURCES = \
 	streaming/rdm_atomic.c
@@ -143,6 +161,18 @@ benchmarks_fi_msg_pingpong_SOURCES = \
 	benchmarks/benchmark_shared.h \
 	benchmarks/benchmark_shared.c
 benchmarks_fi_msg_pingpong_LDADD = libfabtests.la
+
+benchmarks_fi_msg_bw_SOURCES = \
+	benchmarks/msg_bw.c \
+	benchmarks/benchmark_shared.h \
+	benchmarks/benchmark_shared.c
+benchmarks_fi_msg_bw_LDADD = libfabtests.la
+
+benchmarks_fi_rma_bw_SOURCES = \
+	benchmarks/rma_bw.c \
+	benchmarks/benchmark_shared.h \
+	benchmarks/benchmark_shared.c
+benchmarks_fi_rma_bw_LDADD = libfabtests.la
 
 benchmarks_fi_dgram_pingpong_SOURCES = \
 	benchmarks/dgram_pingpong.c \
@@ -180,6 +210,16 @@ unit_fi_eq_test_SOURCES = \
 	unit/common.c
 unit_fi_eq_test_LDADD = libfabtests.la
 
+unit_fi_cq_test_SOURCES = \
+	unit/cq_test.c \
+	unit/common.c
+unit_fi_cq_test_LDADD = libfabtests.la
+
+unit_fi_mr_test_SOURCES = \
+	unit/mr_test.c \
+	unit/common.c
+unit_fi_mr_test_LDADD = libfabtests.la
+
 unit_fi_av_test_SOURCES = \
 	unit/av_test.c \
 	unit/common.c
@@ -194,6 +234,11 @@ unit_fi_dom_test_SOURCES = \
 	unit/dom_test.c \
 	unit/common.c
 unit_fi_dom_test_LDADD = libfabtests.la
+
+unit_fi_getinfo_test_SOURCES = \
+	unit/getinfo_test.c \
+	unit/common.c
+unit_fi_getinfo_test_LDADD = libfabtests.la
 
 ported_libibverbs_fi_rc_pingpong_SOURCES = \
 	ported/libibverbs/rc_pingpong.c

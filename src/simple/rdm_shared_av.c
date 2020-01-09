@@ -32,31 +32,20 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <unistd.h>
-#include <sys/types.h>
 #include <string.h>
 
 #include <rdma/fi_errno.h>
-#include <rdma/fi_endpoint.h>
-#include <rdma/fi_cm.h>
 
 #include "shared.h"
 
 static int init_fabric(void)
 {
-	char *node, *service;
-	uint64_t flags = 0;
 	int ret;
+	int ret2;
 
-	ret = ft_read_addr_opts(&node, &service, hints, &flags, &opts);
+	ret = ft_getinfo(hints, &fi);
 	if (ret)
 		return ret;
-
-	/* Get fabric info */
-	ret = fi_getinfo(FT_FIVERSION, node, service, flags, hints, &fi);
-	if (ret) {
-		FT_PRINTERR("fi_getinfo", ret);
-		return ret;
-	}
 
 	ret = ft_open_fabric_res();
 	if (ret)
@@ -64,19 +53,20 @@ static int init_fabric(void)
 
 	if (opts.dst_addr && !ft_parent_proc) {
 		/* child waits until parent is done creating AV */
-		ret = ft_sync_pair(FI_SUCCESS);
-
-		if (ret)
-			return ret;
+		ret2 = ft_sync_pair(FI_SUCCESS);
+		if (ret2)
+			return ret2;
 
 		/* child needs to open AV in read only mode */
 		av_attr.flags = FI_READ;
 	}
-	ret = ft_alloc_active_res(fi);
 
+	ret = ft_alloc_active_res(fi);
 	if (opts.dst_addr && ft_parent_proc) {
 		/* parent lets the child know its status */
-		ret = ft_sync_pair(ret);
+		ret2 = ft_sync_pair(ret);
+		if (ret2)
+			return ret2;
 	}
 
 	/* handle the failed alloc_active_res call */
@@ -99,7 +89,7 @@ static int send_recv()
 			return -FI_ETOOSMALL;
 		}
 
-		ret = ft_tx(message_len);
+		ret = ft_tx(ep, remote_fi_addr, message_len, &tx_ctx);
 		if (ret)
 			return ret;
 
@@ -124,6 +114,7 @@ static int send_recv()
 static int run(void)
 {
 	int ret;
+	int ret2;
 
 	ret = init_fabric();
 	if (ret)
@@ -134,17 +125,18 @@ static int run(void)
 			/* parent inits AV and lets child proceed,
 			 * and itself returns without sending a message */
 			ret = ft_init_av();
-
-			ret = ft_sync_pair(ret);
+			ret2 = ft_sync_pair(ret);
+			if (ret2)
+				return ret2;
 
 			/* parent doesn't run the send_recv loop,
 			 * it waits for the child until it is done
 			 * with send_recv */
 			return ret;
 		} else {
-			ret = ft_sync_pair(FI_SUCCESS);
-			if (ret)
-				return ret;
+			ret2 = ft_sync_pair(FI_SUCCESS);
+			if (ret2)
+				return ret2;
 
 			remote_fi_addr = ((fi_addr_t *)av_attr.map_addr)[0];
 		}
@@ -186,12 +178,15 @@ int main(int argc, char **argv)
 		opts.dst_addr = argv[optind];
 
 	if (opts.dst_addr) {
+		if (!opts.av_name)
+			opts.av_name = "client_av";
+
 		ret = ft_fork_and_pair();
 		if (ret)
 			return ret;
-
+	} else {
 		if (!opts.av_name)
-			opts.av_name = "foo";
+			opts.av_name = "server_av";
 	}
 
 	hints->ep_attr->type	= FI_EP_RDM;
@@ -208,5 +203,5 @@ int main(int argc, char **argv)
 
 	ft_free_res();
 
-	return -ret;
+	return ft_exit_code(ret);
 }

@@ -1,0 +1,36 @@
+From 41d5a0d4048dc32ecbff36843e8aadad6b621ff5 Mon Sep 17 00:00:00 2001
+From: Michal Schmidt <mschmidt@redhat.com>
+Date: Tue, 19 Apr 2016 13:29:43 +0200
+Subject: [PATCH] adjust shebang lines in rft_yaml_to_junit_xml and
+ runfabtests.sh
+
+Do not use /usr/bin/env. Call the appropriate binary directly.
+This way rpmbuild will record the right dependencies.
+---
+ scripts/rft_yaml_to_junit_xml | 2 +-
+ scripts/runfabtests.sh        | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/scripts/rft_yaml_to_junit_xml b/scripts/rft_yaml_to_junit_xml
+index feb646366a..2d3b3a30c4 100755
+--- a/scripts/rft_yaml_to_junit_xml
++++ b/scripts/rft_yaml_to_junit_xml
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env ruby
++#!/usr/bin/ruby
+ 
+ # Copyright (c) 2015 Cisco Systems, Inc.  All rights reserved.
+ #
+diff --git a/scripts/runfabtests.sh b/scripts/runfabtests.sh
+index a73340c8a6..85aceba6e3 100755
+--- a/scripts/runfabtests.sh
++++ b/scripts/runfabtests.sh
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env bash
++#!/bin/bash
+ 
+ #
+ # Copyright (c) 2016, Cisco Systems, Inc. All rights reserved.
+-- 
+2.7.3
+

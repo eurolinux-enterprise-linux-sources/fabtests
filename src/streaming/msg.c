@@ -1,8 +1,7 @@
 /*
  * Copyright (c) 2013-2015 Intel Corporation.  All rights reserved.
  *
- * This software is available to you under the BSD license
- * below:
+ * This software is available to you under the BSD license below:
  *
  *     Redistribution and use in source and binary forms, with or
  *     without modification, are permitted provided that the following
@@ -32,37 +31,70 @@
 #include <getopt.h>
 
 #include <rdma/fi_errno.h>
+#include <rdma/fi_cm.h>
 
-#include <shared.h>
-#include "benchmark_shared.h"
+#include "shared.h"
+
+static int stream(void)
+{
+	int ret, i;
+
+	ret = ft_sync();
+	if (ret)
+		return ret;
+
+	ft_start();
+	for (i = 0; i < opts.iterations; i++) {
+		ret = opts.dst_addr ?
+			ft_tx(ep, remote_fi_addr, opts.transfer_size, &tx_ctx) : ft_rx(ep, opts.transfer_size);
+		if (ret)
+			return ret;
+	}
+	ft_stop();
+
+	if (opts.machr)
+		show_perf_mr(opts.transfer_size, opts.iterations, &start, &end, 1,
+			     opts.argc, opts.argv);
+	else
+		show_perf(NULL, opts.transfer_size, opts.iterations, &start, &end, 1);
+
+	return 0;
+}
 
 static int run(void)
 {
-	int i, ret = 0;
+	int i, ret;
 
-	ret = ft_init_fabric();
+	if (!opts.dst_addr) {
+		ret = ft_start_server();
+		if (ret)
+			return ret;
+	}
+
+	ret = opts.dst_addr ? ft_client_connect() : ft_server_connect();
 	if (ret)
 		return ret;
 
 	if (!(opts.options & FT_OPT_SIZE)) {
 		for (i = 0; i < TEST_CNT; i++) {
-			if (!ft_use_size(i, opts.sizes_enabled))
+			if (!ft_use_size(i,opts.sizes_enabled))
 				continue;
 			opts.transfer_size = test_size[i].size;
 			init_test(&opts, test_name, sizeof(test_name));
-			ret = pingpong();
+			ret = stream();
 			if (ret)
 				goto out;
 		}
 	} else {
 		init_test(&opts, test_name, sizeof(test_name));
-		ret = pingpong();
+		ret = stream();
 		if (ret)
 			goto out;
 	}
 
 	ft_finalize();
 out:
+	fi_shutdown(ep, 0);
 	return ret;
 }
 
@@ -71,24 +103,21 @@ int main(int argc, char **argv)
 	int op, ret;
 
 	opts = INIT_OPTS;
-	opts.options = FT_OPT_RX_CNTR | FT_OPT_TX_CNTR;
-	opts.comp_method = FT_COMP_SREAD;
 
 	hints = fi_allocinfo();
 	if (!hints)
 		return EXIT_FAILURE;
 
-	while ((op = getopt(argc, argv, "h" CS_OPTS INFO_OPTS BENCHMARK_OPTS)) != -1) {
+	while ((op = getopt(argc, argv, "h" CS_OPTS INFO_OPTS)) !=
+			-1) {
 		switch (op) {
 		default:
-			ft_parse_benchmark_opts(op, optarg);
 			ft_parseinfo(op, optarg, hints);
 			ft_parsecsopts(op, optarg, &opts);
 			break;
 		case '?':
 		case 'h':
-			ft_csusage(argv[0], "Ping pong client and server using counters.");
-			ft_benchmark_usage();
+			ft_csusage(argv[0], "Simple streaming client and server using MSG endpoints.");
 			return EXIT_FAILURE;
 		}
 	}
@@ -96,7 +125,7 @@ int main(int argc, char **argv)
 	if (optind < argc)
 		opts.dst_addr = argv[optind];
 
-	hints->ep_attr->type = FI_EP_RDM;
+	hints->ep_attr->type = FI_EP_MSG;
 	hints->caps = FI_MSG;
 	hints->mode = FI_LOCAL_MR;
 

@@ -34,17 +34,24 @@
 #ifndef _UNIT_COMMON_H_
 #define _UNIT_COMMON_H_
 
+#include <shared.h>
+
 enum { PASS, FAIL, NOTSUPP, SKIPPED };
-#define TEST_ENTRY(NAME) { NAME, #NAME }
+#define TEST_ENTRY(NAME, DESC) { NAME, #NAME, DESC}
 
 #define TEST_RET_VAL(_ret, _testret) \
-	(_ret == -FI_ENOSYS || -ret == -FI_ENODATA) ? SKIPPED : (_testret)
+	(_ret == -FI_ENOSYS || _ret == -FI_ENODATA) ? SKIPPED : (_testret)
+
+#define FT_UNIT_STRERR(buf, str, ret) \
+	sprintf(buf, str ": ret=%d (%s)", (int)-ret, fi_strerror((int)-ret))
 
 struct test_entry {
 	int (*test)();
 	char *name;
+	char *desc;
 };
 
+void ft_unit_usage(char *name, char *desc);
 int run_tests(struct test_entry *test_array, char *err_buf);
 
 #endif /* _UNIT_COMMON_H_ */

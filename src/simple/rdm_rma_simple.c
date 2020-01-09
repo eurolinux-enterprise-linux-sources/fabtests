@@ -31,53 +31,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
-#include <time.h>
-#include <netdb.h>
-#include <unistd.h>
 
-#include <rdma/fabric.h>
-#include <rdma/fi_endpoint.h>
-#include <rdma/fi_rma.h>
-#include <rdma/fi_cm.h>
 #include <rdma/fi_errno.h>
-#include <shared.h>
 
+#include <shared.h>
 
 struct fi_rma_iov local, remote;
 
 struct fi_context fi_ctx_write;
 struct fi_context fi_ctx_read;
-
-static int init_fabric(void)
-{
-	char *node, *service;
-	uint64_t flags = 0;
-	int ret;
-
-	ret = ft_read_addr_opts(&node, &service, hints, &flags, &opts);
-	if (ret)
-		return ret;
-
-	ret = fi_getinfo(FT_FIVERSION, node, service, flags, hints, &fi);
-	if (ret) {
-		FT_PRINTERR("fi_getinfo", ret);
-		return ret;
-	}
-
-	ret = ft_open_fabric_res();
-	if (ret)
-		return ret;
-
-	ret = ft_alloc_active_res(fi);
-	if (ret)
-		return ret;
-
-	ret = ft_init_ep();
-	if (ret)
-		return ret;
-
-	return 0;
-}
 
 static int run_test(void)
 {
@@ -85,13 +47,10 @@ static int run_test(void)
 	const char *message = "Hello from Client!";
 	size_t message_len = strlen(message) + 1;
 
-	ret = init_fabric();
+	ret = ft_init_fabric();
 	if (ret)
 		return ret;
 
-	ret = ft_init_av();
-	if (ret)
-		return ret;
 	if (opts.dst_addr) {
 		fprintf(stdout, "RMA write to server\n");
 		if (snprintf(tx_buf, tx_size, "%s", message) >= tx_size) {
@@ -159,5 +118,5 @@ int main(int argc, char **argv)
 	ret = run_test();
 
 	ft_free_res();
-	return -ret;
+	return ft_exit_code(ret);
 }

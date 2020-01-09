@@ -33,9 +33,12 @@
 #ifndef _FABTESTS_OSX_OSD_H_
 #define _FABTESTS_OSX_OSD_H_
 
+#include <config.h>
+
 #include <sys/time.h>
 #include <time.h>
 
+#if !HAVE_CLOCK_GETTIME
 #define CLOCK_REALTIME 0
 #define CLOCK_REALTIME_COARSE 0
 #define CLOCK_MONOTONIC 0
@@ -51,5 +54,6 @@ int clock_gettime(clockid_t clk_id, struct timespec *tp);
 #ifdef __cplusplus
 }
 #endif
+#endif // !HAVE_CLOCK_GETTIME
 
 #endif // FABTESTS_OSX_OSD_H
