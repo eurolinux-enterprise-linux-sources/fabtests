@@ -19,7 +19,7 @@
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AWV
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
  * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
  * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
@@ -115,6 +115,8 @@ enum {
 	FT_OPT_BW		= 1 << 9,
 	FT_OPT_CQ_SHARED	= 1 << 10,
 	FT_OPT_OOB_SYNC		= 1 << 11,
+	FT_OPT_SKIP_MSG_ALLOC	= 1 << 12,
+	FT_OPT_SKIP_REG_MR	= 1 << 13,
 };
 
 /* for RMA tests --- we want to be able to select fi_writedata, but there is no
@@ -189,6 +191,8 @@ extern struct fi_eq_attr eq_attr;
 extern struct fi_cq_attr cq_attr;
 extern struct fi_cntr_attr cntr_attr;
 
+extern struct fi_rma_iov remote;
+
 extern char test_name[50];
 extern struct timespec start, end;
 extern struct ft_opts opts;
@@ -207,14 +211,13 @@ void ft_fill_buf(void *buf, int size);
 int ft_check_buf(void *buf, int size);
 int ft_check_opts(uint64_t flags);
 uint64_t ft_init_cq_data(struct fi_info *info);
-int ft_sock_listen(char *service);
+int ft_sock_listen(char *node, char *service);
 int ft_sock_connect(char *node, char *service);
 int ft_sock_accept();
 int ft_sock_send(int fd, void *msg, size_t len);
 int ft_sock_recv(int fd, void *msg, size_t len);
 int ft_sock_sync(int value);
 void ft_sock_shutdown(int fd);
-extern int ft_skip_mr;
 extern int (*ft_mr_alloc_func)(void);
 extern uint64_t ft_tag;
 extern int ft_parent_proc;
@@ -277,12 +280,16 @@ size_t datatype_to_size(enum fi_datatype datatype);
 #endif
 
 #define FT_EQ_ERR(eq, entry, buf, len) \
-	FT_ERR("eq_readerr: %s", fi_eq_strerror(eq, entry.prov_errno, \
-				entry.err_data, buf, len))
+	FT_ERR("eq_readerr (Provider errno: %d) : %s",		 \
+		entry.prov_errno, fi_eq_strerror(eq, entry.err,	 \
+						 entry.err_data, \
+						 buf, len))	 \
 
 #define FT_CQ_ERR(cq, entry, buf, len) \
-	FT_ERR("cq_readerr: %s", fi_cq_strerror(cq, entry.prov_errno, \
-				entry.err_data, buf, len))
+	FT_ERR("cq_readerr (Provider errno: %d) : %s",		 \
+		entry.prov_errno, fi_cq_strerror(cq, entry.err,	 \
+						 entry.err_data, \
+						 buf, len))	 \
 
 #define FT_CLOSE_FID(fd)						\
 	do {								\
@@ -335,11 +342,10 @@ int ft_connect_ep(struct fid_ep *ep,
 		struct fid_eq *eq, fi_addr_t *remote_addr);
 int ft_alloc_ep_res(struct fi_info *fi);
 int ft_alloc_active_res(struct fi_info *fi);
-int ft_init_ep(void);
-int ft_setup_ep(struct fid_ep *ep, struct fid_eq *eq,
-		struct fid_av *av, struct fid_cq *txcq,
-		struct fid_cq *rxcq, struct fid_cntr *txcntr,
-		struct fid_cntr *rxcntr, bool post_initial_recv);
+int ft_enable_ep_recv(void);
+int ft_enable_ep(struct fid_ep *ep, struct fid_eq *eq, struct fid_av *av,
+		 struct fid_cq *txcq, struct fid_cq *rxcq,
+		 struct fid_cntr *txcntr, struct fid_cntr *rxcntr);
 int ft_init_alias_ep(uint64_t flags);
 int ft_av_insert(struct fid_av *av, void *addr, size_t count, fi_addr_t *fi_addr,
 		uint64_t flags, void *context);
@@ -458,6 +464,8 @@ void ft_free_bit_combo(uint64_t *combo);
 int ft_cntr_open(struct fid_cntr **cntr);
 const char *ft_util_name(const char *str, size_t *len);
 const char *ft_core_name(const char *str, size_t *len);
+char **ft_split_and_alloc(const char *s, const char *delim, size_t *count);
+void ft_free_string_array(char **s);
 
 #define FT_PROCESS_QUEUE_ERR(readerr, rd, queue, fn, str)	\
 	do {							\

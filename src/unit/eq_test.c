@@ -23,7 +23,7 @@
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AWV
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
  * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
  * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
@@ -532,6 +532,45 @@ fail:
 	return TEST_RET_VAL(ret, testret);
 }
 
+static int
+eq_readerr_ret_eagain()
+{
+	int testret;
+	int ret;
+	struct fi_eq_err_entry err_entry;
+
+	testret = FAIL;
+
+	memset(&err_entry, 0, sizeof(err_entry));
+
+	/* create EQ  */
+	ret = create_eq(32, FI_WRITE, FI_WAIT_UNSPEC);
+	if (ret) {
+		sprintf(err_buf, "fi_eq_open ret=%d, %s", ret, fi_strerror(-ret));
+		goto fail;
+	}
+
+	ret = insert_events(5);
+	if (ret)
+		goto fail;
+
+	ret = read_events(5, 0);
+	if (ret)
+		goto fail;
+
+	/* Error handling  */
+	ret = fi_eq_readerr(eq, &err_entry, 0);
+	if (ret == -FI_EAGAIN)
+		testret = PASS;
+	else
+		sprintf(err_buf, ", fi_eq_readerr returned: %d: %s, ", ret,
+				fi_eq_strerror(eq, err_entry.prov_errno, err_entry.err_data, NULL, 0));
+
+fail:
+	FT_CLOSE_FID(eq);
+	return TEST_RET_VAL(ret, testret);
+}
+
 struct test_entry test_array[] = {
 	TEST_ENTRY(eq_open_close, "Test open and close of EQ for various sizes"),
 	TEST_ENTRY(eq_write_read_self, "Test writing and reading to EQ"),
@@ -540,6 +579,7 @@ struct test_entry test_array[] = {
 	TEST_ENTRY(eq_wait_fd_sread, "Test EQ sread"),
 	TEST_ENTRY(eq_wait_read_peek, "Test EQ read with FI_PEEK"),
 	TEST_ENTRY(eq_wait_sread_peek, "Test EQ sread with FI_PEEK"),
+	TEST_ENTRY(eq_readerr_ret_eagain, "Test EQ readerr with FI_EAGAIN"),
 	{ NULL, "" }
 };
 
@@ -569,9 +609,13 @@ int main(int argc, char **argv)
 		}
 	}
 
-	hints->mode = ~0;
-	hints->domain_attr->mode = ~0;
-	hints->domain_attr->mr_mode = ~(FI_MR_BASIC | FI_MR_SCALABLE);
+	hints->mode = FI_CONTEXT | FI_CONTEXT2 | FI_MSG_PREFIX | FI_ASYNC_IOV |
+		FI_RX_CQ_DATA | FI_NOTIFY_FLAGS_ONLY | FI_RESTRICTED_COMP |
+		FI_BUFFERED_RECV;
+	hints->domain_attr->mode = FI_RESTRICTED_COMP;
+	hints->domain_attr->mr_mode = FI_MR_LOCAL| FI_MR_RAW | FI_MR_VIRT_ADDR |
+		FI_MR_ALLOCATED | FI_MR_PROV_KEY | FI_MR_MMU_NOTIFY |
+		FI_MR_RMA_EVENT | FI_MR_ENDPOINT;
 
 	ret = fi_getinfo(FT_FIVERSION, NULL, 0, 0, hints, &fi);
 	if (ret) {

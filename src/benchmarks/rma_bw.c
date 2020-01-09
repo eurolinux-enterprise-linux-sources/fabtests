@@ -19,7 +19,7 @@
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AWV
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
  * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
  * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
@@ -35,8 +35,6 @@
 
 #include <shared.h>
 #include "benchmark_shared.h"
-
-static struct fi_rma_iov remote;
 
 static int run(void)
 {
@@ -101,6 +99,7 @@ int main(int argc, char **argv)
 	hints->domain_attr->resource_mgmt = FI_RM_ENABLED;
 	hints->mode = FI_CONTEXT;
 	hints->domain_attr->mr_mode = FI_MR_LOCAL | OFI_MR_BASIC_MAP;
+	hints->domain_attr->threading = FI_THREAD_DOMAIN;
 
 	while ((op = getopt(argc, argv, "ho:" CS_OPTS INFO_OPTS BENCHMARK_OPTS)) != -1) {
 		switch (op) {

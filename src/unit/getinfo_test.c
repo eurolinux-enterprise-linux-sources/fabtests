@@ -23,7 +23,7 @@
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AWV
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
  * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
  * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
@@ -129,7 +129,9 @@ static int validate_msg_ordering_bits(char *node, char *service, uint64_t flags,
 	for (i = 0; i < cnt; i++) {
 		hints->tx_attr->msg_order = msg_order_combinations[i];
 		ret = fi_getinfo(FT_FIVERSION, node, service, flags, hints, info);
-		if (ret && ret != -FI_ENODATA) {
+		if (ret) {
+			if (ret == -FI_ENODATA)
+				continue;
 			FT_UNIT_STRERR(err_buf, "fi_getinfo failed", ret);
 			goto failed_getinfo;
 		}
@@ -139,7 +141,12 @@ static int validate_msg_ordering_bits(char *node, char *service, uint64_t flags,
 					fi->fabric_attr->name, fi->domain_attr->name,
 					fi->ep_attr->type);
 			if (hints->tx_attr->msg_order) {
-				if (!(fi->tx_attr->msg_order & hints->tx_attr->msg_order)) {
+				if ((fi->tx_attr->msg_order & hints->tx_attr->msg_order) !=
+				    hints->tx_attr->msg_order) {
+					FT_DEBUG("tx msg_order not matching - hints: %"
+						 PRIx64 " prov: %" PRIx64 "\n",
+						 hints->tx_attr->msg_order,
+						 fi->tx_attr->msg_order);
 					ret = -FI_EOTHER;
 					fi_freeinfo(*info);
 					goto failed_getinfo;
@@ -154,7 +161,9 @@ static int validate_msg_ordering_bits(char *node, char *service, uint64_t flags,
 		hints->tx_attr->msg_order = 0;
 		hints->rx_attr->msg_order = msg_order_combinations[i];
 		ret = fi_getinfo(FT_FIVERSION, node, service, flags, hints, info);
-		if (ret && ret != -FI_ENODATA) {
+		if (ret) {
+			if (ret == -FI_ENODATA)
+				continue;
 			FT_UNIT_STRERR(err_buf, "fi_getinfo failed", ret);
 			goto failed_getinfo;
 		}
@@ -163,7 +172,12 @@ static int validate_msg_ordering_bits(char *node, char *service, uint64_t flags,
 					fi->fabric_attr->name, fi->domain_attr->name,
 					fi->ep_attr->type);
 			if (hints->rx_attr->msg_order) {
-				if (!(fi->rx_attr->msg_order & hints->rx_attr->msg_order)) {
+				if ((fi->rx_attr->msg_order & hints->rx_attr->msg_order) !=
+				    hints->rx_attr->msg_order) {
+					FT_DEBUG("rx msg_order not matching - hints: %"
+						 PRIx64 " prov: %" PRIx64 "\n",
+						 hints->rx_attr->msg_order,
+						 fi->rx_attr->msg_order);
 					ret = -FI_EOTHER;
 					fi_freeinfo(*info);
 					goto failed_getinfo;
@@ -452,8 +466,12 @@ static int test_mr_modes(char *node, char *service, uint64_t flags,
 	for (i = 0; i < cnt; i++) {
 		hints->domain_attr->mr_mode = (uint32_t) mr_modes[i];
 		ret = fi_getinfo(FT_FIVERSION, node, service, flags, hints, info);
-		if (ret && ret != -FI_ENODATA)
+		if (ret) {
+			if (ret == -FI_ENODATA)
+				continue;
+			FT_UNIT_STRERR(err_buf, "fi_getinfo failed", ret);
 			goto out;
+		}
 
 		ft_foreach_info(fi, *info) {
 			if (fi->domain_attr->mr_mode & ~hints->domain_attr->mr_mode) {
@@ -653,22 +671,29 @@ static void usage(void)
 	ft_addr_usage();
 }
 
-static void set_prov(char *prov_name)
+static int set_prov(char *prov_name)
 {
 	const char *util_name;
 	const char *core_name;
+	char *core_name_dup;
 	size_t len;
 
 	util_name = ft_util_name(prov_name, &len);
 	core_name = ft_core_name(prov_name, &len);
 
 	if (util_name && !core_name)
-		return;
+		return 0;
+
+	core_name_dup = strndup(core_name, len);
+	if (!core_name_dup)
+		return -FI_ENOMEM;
 
 	snprintf(new_prov_var, sizeof(new_prov_var) - 1, "FI_PROVIDER=%s",
-		 core_name);
+		 core_name_dup);
 
 	putenv(new_prov_var);
+	free(core_name_dup);
+	return 0;
 }
 
 int main(int argc, char **argv)
@@ -750,7 +775,8 @@ int main(int argc, char **argv)
 	hints->mode = ~0;
 
 	if (hints->fabric_attr->prov_name) {
-		set_prov(hints->fabric_attr->prov_name);
+		if (set_prov(hints->fabric_attr->prov_name))
+			return EXIT_FAILURE;
 	} else {
 	       FT_WARN("\nTests getinfo1 to getinfo5 may not run exclusively "
 		       "for a particular provider since we don't pass hints.\n"

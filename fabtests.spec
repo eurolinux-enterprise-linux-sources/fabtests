@@ -1,5 +1,5 @@
 Name: fabtests
-Version: 1.6.1
+Version: 1.7.0
 Release: 1%{?dist}
 Summary: Test suite for libfabric API
 License: GPLv2 or BSD
@@ -8,6 +8,7 @@ Source: https://github.com/ofiwg/%{name}/releases/download/v%{version}/%{name}-%
 Patch1: 0001-adjust-shebang-lines-in-rft_yaml_to_junit_xml-and-ru.patch
 BuildRequires: libfabric-devel >= %{version}
 BuildRequires: gcc
+ExcludeArch: %{ix86}
 %ifnarch s390
 BuildRequires: valgrind-devel
 %endif
@@ -35,12 +36,17 @@ rm -f %{buildroot}%{_libdir}/*.la
 
 %files
 %{_bindir}/*
+%{_mandir}/man1/*
 %{_mandir}/man7/*
 %doc AUTHORS README
 %license COPYING
 %{_prefix}/share/fabtests/test_configs
 
 %changelog
+* Thu Jan 31 2019 Honggang Li <honli@redhat.com> - 1.7.0-1
+- Rebase to latest release 1.7.0
+- Resolves: bz1635032
+
 * Tue Jun  5 2018 Honggang Li <honli@redhat.com> - 1.6.1-1
 - Rebase to latest release 1.6.1
 - Resolves: bz1575467

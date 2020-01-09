@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 #
-# Copyright (c) 2017, Intel Corporation.  All rights reserved.
+# Copyright (c) 2017-2018, Intel Corporation.  All rights reserved.
 # Copyright (c) 2016-2018, Cisco Systems, Inc. All rights reserved.
 # Copyright (c) 2016, Cray, Inc. All rights reserved.
 #
@@ -53,9 +53,10 @@ declare GOOD_ADDR=""
 declare -i VERBOSE=0
 declare -i SKIP_NEG=0
 declare COMPLEX_CFG
-declare TIMEOUT_VAL="90"
+declare TIMEOUT_VAL="120"
 declare STRICT_MODE=0
 declare REGEX=0
+declare FORK=0
 
 declare -r c_outp=$(mktemp fabtests.c_outp.XXXXXX)
 declare -r s_outp=$(mktemp fabtests.s_outp.XXXXXX)
@@ -77,7 +78,7 @@ neg_unit_tests=(
 	"msg g00n13s"
 )
 
-simple_tests=(
+functional_tests=(
 	"av_xfer -e rdm"
 	"av_xfer -e dgram"
 	"cm_data"
@@ -105,7 +106,6 @@ simple_tests=(
 	"shared_ctx -e dgram --no-rx-shared-ctx"
 	"rdm_tagged_peek"
 	"scalable_ep"
-	"cmatose"
 	"rdm_shared_av"
 	"multi_mr -e msg -V"
 	"multi_mr -e rdm -V"
@@ -133,25 +133,16 @@ short_tests=(
 	"rma_bw -e rdm -o write -I 5"
 	"rma_bw -e rdm -o read -I 5"
 	"rma_bw -e rdm -o writedata -I 5"
-	"msg_rma -o write -I 5"
-	"msg_rma -o read -I 5"
-	"msg_rma -o writedata -I 5"
-	"msg_stream -I 5"
 	"rdm_atomic -I 5 -o all"
 	"rdm_cntr_pingpong -I 5"
 	"rdm_multi_recv -I 5"
 	"rdm_pingpong -I 5"
 	"rdm_pingpong -I 5 -v"
-	"rdm_rma -o write -I 5"
-	"rdm_rma -o read -I 5"
-	"rdm_rma -o writedata -I 5"
 	"rdm_tagged_pingpong -I 5"
 	"rdm_tagged_pingpong -I 5 -v"
 	"rdm_tagged_bw -I 5"
 	"rdm_tagged_bw -I 5 -v"
 	"dgram_pingpong -I 5"
-	"rc_pingpong -n 5"
-	"rc_pingpong -n 5 -e"
 )
 
 standard_tests=(
@@ -167,10 +158,6 @@ standard_tests=(
 	"rma_bw -e rdm -o write"
 	"rma_bw -e rdm -o read"
 	"rma_bw -e rdm -o writedata"
-	"msg_rma -o write"
-	"msg_rma -o read"
-	"msg_rma -o writedata"
-	"msg_stream"
 	"rdm_atomic -o all -I 1000"
 	"rdm_cntr_pingpong"
 	"rdm_multi_recv"
@@ -178,16 +165,12 @@ standard_tests=(
 	"rdm_pingpong -v"
 	"rdm_pingpong -k"
 	"rdm_pingpong -k -v"
-	"rdm_rma -o write"
-	"rdm_rma -o read"
-	"rdm_rma -o writedata"
 	"rdm_tagged_pingpong"
 	"rdm_tagged_pingpong -v"
 	"rdm_tagged_bw"
 	"rdm_tagged_bw -v"
 	"dgram_pingpong"
 	"dgram_pingpong -k"
-	"rc_pingpong"
 )
 
 unit_tests=(
@@ -335,7 +318,7 @@ function unit_test {
 	start_time=$(date '+%s')
 
 	cmd="${BIN_PATH}${test_exe}"
-	${SERVER_CMD} "$cmd" &> $s_outp &
+	${SERVER_CMD} "${EXPORT_ENV} $cmd" &> $s_outp &
 	p1=$!
 
 	wait $p1
@@ -368,8 +351,8 @@ function unit_test {
 
 function cs_test {
 	local test=$1
-	local ret1=0
-	local ret2=0
+	local s_ret=0
+	local c_ret=0
 	local test_exe="fi_${test} -p \"${PROV}\""
 	local start_time
 	local end_time
@@ -380,30 +363,32 @@ function cs_test {
 	start_time=$(date '+%s')
 
 	s_cmd="${BIN_PATH}${test_exe} -s $S_INTERFACE"
-	${SERVER_CMD} "$s_cmd" &> $s_outp &
-	p1=$!
+	${SERVER_CMD} "${EXPORT_ENV} $s_cmd" &> $s_outp &
+	s_pid=$!
 	sleep 1
 
 	c_cmd="${BIN_PATH}${test_exe} -s $C_INTERFACE $S_INTERFACE"
-	${CLIENT_CMD} "$c_cmd" &> $c_outp &
-	p2=$!
+	${CLIENT_CMD} "${EXPORT_ENV} $c_cmd" &> $c_outp &
+	c_pid=$!
 
-	wait $p1
-	ret1=$?
+	wait $c_pid
+	c_ret=$?
 
-	wait $p2
-	ret2=$?
+	[[ c_ret -ne 0 ]] && kill -9 $s_pid 2> /dev/null
+
+	wait $s_pid
+	s_ret=$?
 
 	end_time=$(date '+%s')
 	test_time=$(compute_duration "$start_time" "$end_time")
 
-	if [[ $STRICT_MODE -eq 0 && $ret1 -eq $FI_ENODATA && $ret2 -eq $FI_ENODATA ]] ||
-	   [[ $STRICT_MODE -eq 0 && $ret1 -eq $FI_ENOSYS && $ret2 -eq $FI_ENOSYS ]]; then
+	if [[ $STRICT_MODE -eq 0 && $s_ret -eq $FI_ENODATA && $c_ret -eq $FI_ENODATA ]] ||
+	   [[ $STRICT_MODE -eq 0 && $s_ret -eq $FI_ENOSYS && $c_ret -eq $FI_ENOSYS ]]; then
 		print_results "$test_exe" "Notrun" "$test_time" "$s_outp" "$s_cmd" "$c_outp" "$c_cmd"
 		skip_count+=1
-	elif [ $ret1 -ne 0 -o $ret2 -ne 0 ]; then
+	elif [ $s_ret -ne 0 -o $c_ret -ne 0 ]; then
 		print_results "$test_exe" "Fail" "$test_time" "$s_outp" "$s_cmd" "$c_outp" "$c_cmd"
-		if [ $ret1 -eq 124 -o $ret2 -eq 124 ]; then
+		if [ $s_ret -eq 124 -o $c_ret -eq 124 ]; then
 			cleanup
 		fi
 		fail_count+=1
@@ -417,8 +402,8 @@ function complex_test {
 	local test=$1
 	local config=$2
 	local test_exe="fi_${test}"
-	local ret1=0
-	local ret2=0
+	local s_ret=0
+	local c_ret=0
 	local start_time
 	local end_time
 	local test_time
@@ -427,33 +412,41 @@ function complex_test {
 
 	start_time=$(date '+%s')
 
-	s_cmd="${BIN_PATH}${test_exe} -x"
-	FI_LOG_LEVEL=error ${SERVER_CMD} "$s_cmd" &> $s_outp &
-	p1=$!
+	if [[ $FORK -eq 1 ]]; then
+		opts="-f"
+	else
+		opts=""
+	fi
+
+	s_cmd="${BIN_PATH}${test_exe} -x $opts"
+	FI_LOG_LEVEL=error ${SERVER_CMD} "${EXPORT_ENV} $s_cmd" &> $s_outp &
+	s_pid=$!
 	sleep 1
 
-	c_cmd="${BIN_PATH}${test_exe} -p \"${PROV}\" -t $config $S_INTERFACE"
-	FI_LOG_LEVEL=error ${CLIENT_CMD} "$c_cmd" &> $c_outp &
-	p2=$!
+	c_cmd="${BIN_PATH}${test_exe} -p \"${PROV}\" -t $config $S_INTERFACE $opts"
+	FI_LOG_LEVEL=error ${CLIENT_CMD} "${EXPORT_ENV} $c_cmd" &> $c_outp &
+	c_pid=$!
 
-	wait $p2
-	ret2=$?
+	wait $c_pid
+	c_ret=$?
 
-	wait $p1
-	ret1=$?
+	[[ c_ret -ne 0 ]] && kill -9 $s_pid
+
+	wait $s_pid
+	s_ret=$?
 
 	end_time=$(date '+%s')
 	test_time=$(compute_duration "$start_time" "$end_time")
 
 	# case: config file doesn't exist or invalid option provided
-	if [ $ret1 -eq 1 -o $ret2 -eq 1 ]; then
+	if [ $s_ret -eq 1 -o $c_ret -eq 1 ]; then
 		print_results "$test_exe" "Notrun" "0" "$s_outp" "$s_cmd" "$c_outp" "$c_cmd"
 		cleanup
 		skip_count+=1
 		return
 	# case: test didn't run becasue some error occured
-	elif [ $ret1 -ne 0 -o $ret2 -ne 0 ]; then
-		printf "%-50s%s\n" "$test_exe:" "Server returns $ret1, client returns $ret2"
+	elif [ $s_ret -ne 0 -o $c_ret -ne 0 ]; then
+		printf "%-50s%s\n" "$test_exe:" "Server returns $s_ret, client returns $c_ret"
 		print_results "$test_exe" "Fail [$f_cnt/$total]" "$test_time" "$s_outp" "$s_cmd" "$c_outp" "$c_cmd"
                 cleanup
                 fail_count+=1
@@ -476,12 +469,12 @@ function main {
 	local complex_cfg="quick"
 
 	if [[ $1 == "quick" ]]; then
-		local -r tests="unit simple short"
+		local -r tests="unit functional short"
 	elif [[ $1 == "verify" ]]; then
 		local -r tests="complex"
 		complex_cfg=$1
 	else
-		local -r tests=$(echo $1 | sed 's/all/unit,simple,standard,complex/g' | tr ',' ' ')
+		local -r tests=$(echo $1 | sed 's/all/unit,functional,standard,complex/g' | tr ',' ' ')
 		if [[ $1 == "all" ]]; then
 			complex_cfg=$1
 		fi
@@ -509,8 +502,8 @@ function main {
 				done
 			fi
 		;;
-		simple)
-			for test in "${simple_tests[@]}"; do
+		functional)
+			for test in "${functional_tests[@]}"; do
 				cs_test "$test"
 			done
 		;;
@@ -567,9 +560,11 @@ function usage {
 	errcho -e " -v\tprint output of failing"
 	errcho -e " -vv\tprint output of failing/notrun"
 	errcho -e " -vvv\tprint output of failing/notrun/passing"
-	errcho -e " -t\ttest set(s): all,quick,unit,simple,standard,short,complex (default quick)"
+	errcho -e " -t\ttest set(s): all,quick,unit,functional,standard,short,complex (default quick)"
 	errcho -e " -e\texclude tests: comma delimited list of test names /
 			 regex patterns (with -R) e.g. \"dgram,rma.*write\""
+	errcho -e " -E\texport provided variable name and value to ssh client and server processes.
+			 options must of of the form '-E var=value'"
 	errcho -e " -f\texclude tests file: File containing list of test names /
 			 regex patterns (with -R) to exclude (one per line)"
 	errcho -e " -R\tTreat test exclusions as regex patterns"
@@ -586,7 +581,7 @@ function usage {
 	exit 1
 }
 
-while getopts ":vt:p:g:e:f:c:s:u:T:NRS" opt; do
+while getopts ":vt:p:g:e:f:c:s:u:T:NRSkE:" opt; do
 case ${opt} in
 	t) TEST_TYPE=$OPTARG
 	;;
@@ -613,6 +608,19 @@ case ${opt} in
 	R) REGEX=1
 	;;
 	S) STRICT_MODE=1
+	;;
+	k) FORK=1
+	;;
+	E)
+	delimiter="="
+	value=${OPTARG#*$delimiter}
+	var=${OPTARG:0:$(( ${#OPTARG} - ${#value} - ${#delimiter} ))}
+	EXPORT_STRING="export $var=\"$value\""
+	if [[ -z $EXPORT_ENV ]] ; then
+		EXPORT_ENV="$EXPORT_STRING ;"
+	else
+		EXPORT_ENV="$EXPORT_ENV $EXPORT_STRING ;"
+	fi
 	;;
 	:|\?) usage
 	;;

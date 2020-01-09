@@ -91,26 +91,29 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-bin_PROGRAMS = simple/fi_av_xfer$(EXEEXT) simple/fi_msg$(EXEEXT) \
-	simple/fi_msg_sockets$(EXEEXT) simple/fi_rdm$(EXEEXT) \
-	simple/fi_rdm_rma_simple$(EXEEXT) \
-	simple/fi_rdm_rma_trigger$(EXEEXT) \
-	simple/fi_rdm_deferred_wq$(EXEEXT) simple/fi_dgram$(EXEEXT) \
-	simple/fi_mcast$(EXEEXT) simple/fi_dgram_waitset$(EXEEXT) \
-	simple/fi_rdm_tagged_peek$(EXEEXT) simple/fi_cq_data$(EXEEXT) \
-	simple/fi_poll$(EXEEXT) simple/fi_scalable_ep$(EXEEXT) \
-	simple/fi_shared_ctx$(EXEEXT) simple/fi_msg_epoll$(EXEEXT) \
-	simple/fi_rdm_shared_av$(EXEEXT) simple/fi_cm_data$(EXEEXT) \
-	simple/fi_multi_mr$(EXEEXT) \
-	simple/fi_rdm_multi_domain$(EXEEXT) \
-	simple/fi_multi_ep$(EXEEXT) simple/fi_recv_cancel$(EXEEXT) \
-	simple/fi_unexpected_msg$(EXEEXT) \
-	simple/fi_inj_complete$(EXEEXT) \
-	simple/fi_resource_freeing$(EXEEXT) \
-	streaming/fi_resmgmt_test$(EXEEXT) \
-	streaming/fi_msg_rma$(EXEEXT) streaming/fi_rdm_atomic$(EXEEXT) \
-	streaming/fi_rdm_multi_recv$(EXEEXT) \
-	streaming/fi_rdm_rma$(EXEEXT) streaming/fi_msg_stream$(EXEEXT) \
+bin_PROGRAMS = functional/fi_av_xfer$(EXEEXT) \
+	functional/fi_msg$(EXEEXT) functional/fi_msg_sockets$(EXEEXT) \
+	functional/fi_rdm$(EXEEXT) \
+	functional/fi_rdm_rma_simple$(EXEEXT) \
+	functional/fi_rdm_rma_trigger$(EXEEXT) \
+	functional/fi_rdm_deferred_wq$(EXEEXT) \
+	functional/fi_dgram$(EXEEXT) functional/fi_mcast$(EXEEXT) \
+	functional/fi_dgram_waitset$(EXEEXT) \
+	functional/fi_rdm_tagged_peek$(EXEEXT) \
+	functional/fi_cq_data$(EXEEXT) functional/fi_poll$(EXEEXT) \
+	functional/fi_scalable_ep$(EXEEXT) \
+	functional/fi_shared_ctx$(EXEEXT) \
+	functional/fi_msg_epoll$(EXEEXT) \
+	functional/fi_rdm_shared_av$(EXEEXT) \
+	functional/fi_cm_data$(EXEEXT) functional/fi_multi_mr$(EXEEXT) \
+	functional/fi_rdm_multi_domain$(EXEEXT) \
+	functional/fi_multi_ep$(EXEEXT) \
+	functional/fi_recv_cancel$(EXEEXT) \
+	functional/fi_unexpected_msg$(EXEEXT) \
+	functional/fi_inj_complete$(EXEEXT) \
+	functional/fi_resmgmt_test$(EXEEXT) \
+	functional/fi_rdm_atomic$(EXEEXT) \
+	functional/fi_rdm_multi_recv$(EXEEXT) \
 	benchmarks/fi_msg_pingpong$(EXEEXT) \
 	benchmarks/fi_msg_bw$(EXEEXT) benchmarks/fi_rma_bw$(EXEEXT) \
 	benchmarks/fi_rdm_cntr_pingpong$(EXEEXT) \
@@ -121,9 +124,8 @@ bin_PROGRAMS = simple/fi_av_xfer$(EXEEXT) simple/fi_msg$(EXEEXT) \
 	unit/fi_cq_test$(EXEEXT) unit/fi_mr_test$(EXEEXT) \
 	unit/fi_cntr_test$(EXEEXT) unit/fi_av_test$(EXEEXT) \
 	unit/fi_dom_test$(EXEEXT) unit/fi_getinfo_test$(EXEEXT) \
-	ported/libibverbs/fi_rc_pingpong$(EXEEXT) \
-	ported/librdmacm/fi_cmatose$(EXEEXT) \
-	complex/fi_ubertest$(EXEEXT)
+	unit/fi_resource_freeing$(EXEEXT) \
+	ubertest/fi_ubertest$(EXEEXT)
 @HAVE_CLOCK_GETTIME_FALSE@@MACOS_TRUE@am__append_1 = common/osx/osd.c
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -160,7 +162,8 @@ am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)" \
-	"$(DESTDIR)$(man7dir)" "$(DESTDIR)$(configdir)"
+	"$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man7dir)" \
+	"$(DESTDIR)$(configdir)"
 PROGRAMS = $(bin_PROGRAMS)
 am__objects_2 = benchmarks/benchmark_shared.$(OBJEXT)
 am_benchmarks_fi_dgram_pingpong_OBJECTS =  \
@@ -201,137 +204,126 @@ am_benchmarks_fi_rma_bw_OBJECTS = benchmarks/rma_bw.$(OBJEXT) \
 	$(am__objects_2)
 benchmarks_fi_rma_bw_OBJECTS = $(am_benchmarks_fi_rma_bw_OBJECTS)
 benchmarks_fi_rma_bw_DEPENDENCIES = libfabtests.la
-am_complex_fi_ubertest_OBJECTS = complex/ofi_atomic.$(OBJEXT) \
-	complex/ft_main.$(OBJEXT) complex/ft_comm.$(OBJEXT) \
-	complex/ft_comp.$(OBJEXT) complex/ft_config.$(OBJEXT) \
-	complex/ft_domain.$(OBJEXT) complex/ft_endpoint.$(OBJEXT) \
-	complex/ft_msg.$(OBJEXT) complex/ft_verify.$(OBJEXT) \
-	complex/ft_test.$(OBJEXT)
-complex_fi_ubertest_OBJECTS = $(am_complex_fi_ubertest_OBJECTS)
-complex_fi_ubertest_DEPENDENCIES = libfabtests.la
-am_ported_libibverbs_fi_rc_pingpong_OBJECTS =  \
-	ported/libibverbs/rc_pingpong.$(OBJEXT)
-ported_libibverbs_fi_rc_pingpong_OBJECTS =  \
-	$(am_ported_libibverbs_fi_rc_pingpong_OBJECTS)
-ported_libibverbs_fi_rc_pingpong_DEPENDENCIES = libfabtests.la
-am_ported_librdmacm_fi_cmatose_OBJECTS =  \
-	ported/librdmacm/cmatose.$(OBJEXT)
-ported_librdmacm_fi_cmatose_OBJECTS =  \
-	$(am_ported_librdmacm_fi_cmatose_OBJECTS)
-ported_librdmacm_fi_cmatose_DEPENDENCIES = libfabtests.la
-am_simple_fi_av_xfer_OBJECTS = simple/av_xfer.$(OBJEXT)
-simple_fi_av_xfer_OBJECTS = $(am_simple_fi_av_xfer_OBJECTS)
-simple_fi_av_xfer_DEPENDENCIES = libfabtests.la
-am_simple_fi_cm_data_OBJECTS = simple/cm_data.$(OBJEXT)
-simple_fi_cm_data_OBJECTS = $(am_simple_fi_cm_data_OBJECTS)
-simple_fi_cm_data_DEPENDENCIES = libfabtests.la
-am_simple_fi_cq_data_OBJECTS = simple/cq_data.$(OBJEXT)
-simple_fi_cq_data_OBJECTS = $(am_simple_fi_cq_data_OBJECTS)
-simple_fi_cq_data_DEPENDENCIES = libfabtests.la
-am_simple_fi_dgram_OBJECTS = simple/dgram.$(OBJEXT)
-simple_fi_dgram_OBJECTS = $(am_simple_fi_dgram_OBJECTS)
-simple_fi_dgram_DEPENDENCIES = libfabtests.la
-am_simple_fi_dgram_waitset_OBJECTS = simple/dgram_waitset.$(OBJEXT)
-simple_fi_dgram_waitset_OBJECTS =  \
-	$(am_simple_fi_dgram_waitset_OBJECTS)
-simple_fi_dgram_waitset_DEPENDENCIES = libfabtests.la
-am_simple_fi_inj_complete_OBJECTS = simple/inj_complete.$(OBJEXT)
-simple_fi_inj_complete_OBJECTS = $(am_simple_fi_inj_complete_OBJECTS)
-simple_fi_inj_complete_DEPENDENCIES = libfabtests.la
-am_simple_fi_mcast_OBJECTS = simple/mcast.$(OBJEXT)
-simple_fi_mcast_OBJECTS = $(am_simple_fi_mcast_OBJECTS)
-simple_fi_mcast_DEPENDENCIES = libfabtests.la
-am_simple_fi_msg_OBJECTS = simple/msg.$(OBJEXT)
-simple_fi_msg_OBJECTS = $(am_simple_fi_msg_OBJECTS)
-simple_fi_msg_DEPENDENCIES = libfabtests.la
-am_simple_fi_msg_epoll_OBJECTS = simple/msg_epoll.$(OBJEXT)
-simple_fi_msg_epoll_OBJECTS = $(am_simple_fi_msg_epoll_OBJECTS)
-simple_fi_msg_epoll_DEPENDENCIES = libfabtests.la
-am_simple_fi_msg_sockets_OBJECTS = simple/msg_sockets.$(OBJEXT)
-simple_fi_msg_sockets_OBJECTS = $(am_simple_fi_msg_sockets_OBJECTS)
-simple_fi_msg_sockets_DEPENDENCIES = libfabtests.la
-am_simple_fi_multi_ep_OBJECTS = simple/multi_ep.$(OBJEXT)
-simple_fi_multi_ep_OBJECTS = $(am_simple_fi_multi_ep_OBJECTS)
-simple_fi_multi_ep_DEPENDENCIES = libfabtests.la
-am_simple_fi_multi_mr_OBJECTS = simple/multi_mr.$(OBJEXT)
-simple_fi_multi_mr_OBJECTS = $(am_simple_fi_multi_mr_OBJECTS)
-simple_fi_multi_mr_DEPENDENCIES = libfabtests.la
-am_simple_fi_poll_OBJECTS = simple/poll.$(OBJEXT)
-simple_fi_poll_OBJECTS = $(am_simple_fi_poll_OBJECTS)
-simple_fi_poll_DEPENDENCIES = libfabtests.la
-am_simple_fi_rdm_OBJECTS = simple/rdm.$(OBJEXT)
-simple_fi_rdm_OBJECTS = $(am_simple_fi_rdm_OBJECTS)
-simple_fi_rdm_DEPENDENCIES = libfabtests.la
-am_simple_fi_rdm_deferred_wq_OBJECTS =  \
-	simple/rdm_deferred_wq.$(OBJEXT)
-simple_fi_rdm_deferred_wq_OBJECTS =  \
-	$(am_simple_fi_rdm_deferred_wq_OBJECTS)
-simple_fi_rdm_deferred_wq_DEPENDENCIES = libfabtests.la
-am_simple_fi_rdm_multi_domain_OBJECTS =  \
-	simple/rdm_multi_domain.$(OBJEXT)
-simple_fi_rdm_multi_domain_OBJECTS =  \
-	$(am_simple_fi_rdm_multi_domain_OBJECTS)
-simple_fi_rdm_multi_domain_DEPENDENCIES = libfabtests.la
-am_simple_fi_rdm_rma_simple_OBJECTS = simple/rdm_rma_simple.$(OBJEXT)
-simple_fi_rdm_rma_simple_OBJECTS =  \
-	$(am_simple_fi_rdm_rma_simple_OBJECTS)
-simple_fi_rdm_rma_simple_DEPENDENCIES = libfabtests.la
-am_simple_fi_rdm_rma_trigger_OBJECTS =  \
-	simple/rdm_rma_trigger.$(OBJEXT)
-simple_fi_rdm_rma_trigger_OBJECTS =  \
-	$(am_simple_fi_rdm_rma_trigger_OBJECTS)
-simple_fi_rdm_rma_trigger_DEPENDENCIES = libfabtests.la
-am_simple_fi_rdm_shared_av_OBJECTS = simple/rdm_shared_av.$(OBJEXT)
-simple_fi_rdm_shared_av_OBJECTS =  \
-	$(am_simple_fi_rdm_shared_av_OBJECTS)
-simple_fi_rdm_shared_av_DEPENDENCIES = libfabtests.la
-am_simple_fi_rdm_tagged_peek_OBJECTS =  \
-	simple/rdm_tagged_peek.$(OBJEXT)
-simple_fi_rdm_tagged_peek_OBJECTS =  \
-	$(am_simple_fi_rdm_tagged_peek_OBJECTS)
-simple_fi_rdm_tagged_peek_DEPENDENCIES = libfabtests.la
-am_simple_fi_recv_cancel_OBJECTS = simple/recv_cancel.$(OBJEXT)
-simple_fi_recv_cancel_OBJECTS = $(am_simple_fi_recv_cancel_OBJECTS)
-simple_fi_recv_cancel_DEPENDENCIES = libfabtests.la
-am_simple_fi_resource_freeing_OBJECTS =  \
-	simple/resource_freeing.$(OBJEXT)
-simple_fi_resource_freeing_OBJECTS =  \
-	$(am_simple_fi_resource_freeing_OBJECTS)
-simple_fi_resource_freeing_DEPENDENCIES = libfabtests.la
-am_simple_fi_scalable_ep_OBJECTS = simple/scalable_ep.$(OBJEXT)
-simple_fi_scalable_ep_OBJECTS = $(am_simple_fi_scalable_ep_OBJECTS)
-simple_fi_scalable_ep_DEPENDENCIES = libfabtests.la
-am_simple_fi_shared_ctx_OBJECTS = simple/shared_ctx.$(OBJEXT)
-simple_fi_shared_ctx_OBJECTS = $(am_simple_fi_shared_ctx_OBJECTS)
-simple_fi_shared_ctx_DEPENDENCIES = libfabtests.la
-am_simple_fi_unexpected_msg_OBJECTS = simple/unexpected_msg.$(OBJEXT)
-simple_fi_unexpected_msg_OBJECTS =  \
-	$(am_simple_fi_unexpected_msg_OBJECTS)
-simple_fi_unexpected_msg_DEPENDENCIES = libfabtests.la
-am_streaming_fi_msg_rma_OBJECTS = streaming/msg_rma.$(OBJEXT)
-streaming_fi_msg_rma_OBJECTS = $(am_streaming_fi_msg_rma_OBJECTS)
-streaming_fi_msg_rma_DEPENDENCIES = libfabtests.la
-am_streaming_fi_msg_stream_OBJECTS = streaming/msg.$(OBJEXT)
-streaming_fi_msg_stream_OBJECTS =  \
-	$(am_streaming_fi_msg_stream_OBJECTS)
-streaming_fi_msg_stream_DEPENDENCIES = libfabtests.la
-am_streaming_fi_rdm_atomic_OBJECTS = streaming/rdm_atomic.$(OBJEXT)
-streaming_fi_rdm_atomic_OBJECTS =  \
-	$(am_streaming_fi_rdm_atomic_OBJECTS)
-streaming_fi_rdm_atomic_DEPENDENCIES = libfabtests.la
-am_streaming_fi_rdm_multi_recv_OBJECTS =  \
-	streaming/rdm_multi_recv.$(OBJEXT)
-streaming_fi_rdm_multi_recv_OBJECTS =  \
-	$(am_streaming_fi_rdm_multi_recv_OBJECTS)
-streaming_fi_rdm_multi_recv_DEPENDENCIES = libfabtests.la
-am_streaming_fi_rdm_rma_OBJECTS = streaming/rdm_rma.$(OBJEXT)
-streaming_fi_rdm_rma_OBJECTS = $(am_streaming_fi_rdm_rma_OBJECTS)
-streaming_fi_rdm_rma_DEPENDENCIES = libfabtests.la
-am_streaming_fi_resmgmt_test_OBJECTS =  \
-	streaming/resmgmt_test.$(OBJEXT)
-streaming_fi_resmgmt_test_OBJECTS =  \
-	$(am_streaming_fi_resmgmt_test_OBJECTS)
-streaming_fi_resmgmt_test_DEPENDENCIES = libfabtests.la
+am_functional_fi_av_xfer_OBJECTS = functional/av_xfer.$(OBJEXT)
+functional_fi_av_xfer_OBJECTS = $(am_functional_fi_av_xfer_OBJECTS)
+functional_fi_av_xfer_DEPENDENCIES = libfabtests.la
+am_functional_fi_cm_data_OBJECTS = functional/cm_data.$(OBJEXT)
+functional_fi_cm_data_OBJECTS = $(am_functional_fi_cm_data_OBJECTS)
+functional_fi_cm_data_DEPENDENCIES = libfabtests.la
+am_functional_fi_cq_data_OBJECTS = functional/cq_data.$(OBJEXT)
+functional_fi_cq_data_OBJECTS = $(am_functional_fi_cq_data_OBJECTS)
+functional_fi_cq_data_DEPENDENCIES = libfabtests.la
+am_functional_fi_dgram_OBJECTS = functional/dgram.$(OBJEXT)
+functional_fi_dgram_OBJECTS = $(am_functional_fi_dgram_OBJECTS)
+functional_fi_dgram_DEPENDENCIES = libfabtests.la
+am_functional_fi_dgram_waitset_OBJECTS =  \
+	functional/dgram_waitset.$(OBJEXT)
+functional_fi_dgram_waitset_OBJECTS =  \
+	$(am_functional_fi_dgram_waitset_OBJECTS)
+functional_fi_dgram_waitset_DEPENDENCIES = libfabtests.la
+am_functional_fi_inj_complete_OBJECTS =  \
+	functional/inj_complete.$(OBJEXT)
+functional_fi_inj_complete_OBJECTS =  \
+	$(am_functional_fi_inj_complete_OBJECTS)
+functional_fi_inj_complete_DEPENDENCIES = libfabtests.la
+am_functional_fi_mcast_OBJECTS = functional/mcast.$(OBJEXT)
+functional_fi_mcast_OBJECTS = $(am_functional_fi_mcast_OBJECTS)
+functional_fi_mcast_DEPENDENCIES = libfabtests.la
+am_functional_fi_msg_OBJECTS = functional/msg.$(OBJEXT)
+functional_fi_msg_OBJECTS = $(am_functional_fi_msg_OBJECTS)
+functional_fi_msg_DEPENDENCIES = libfabtests.la
+am_functional_fi_msg_epoll_OBJECTS = functional/msg_epoll.$(OBJEXT)
+functional_fi_msg_epoll_OBJECTS =  \
+	$(am_functional_fi_msg_epoll_OBJECTS)
+functional_fi_msg_epoll_DEPENDENCIES = libfabtests.la
+am_functional_fi_msg_sockets_OBJECTS =  \
+	functional/msg_sockets.$(OBJEXT)
+functional_fi_msg_sockets_OBJECTS =  \
+	$(am_functional_fi_msg_sockets_OBJECTS)
+functional_fi_msg_sockets_DEPENDENCIES = libfabtests.la
+am_functional_fi_multi_ep_OBJECTS = functional/multi_ep.$(OBJEXT)
+functional_fi_multi_ep_OBJECTS = $(am_functional_fi_multi_ep_OBJECTS)
+functional_fi_multi_ep_DEPENDENCIES = libfabtests.la
+am_functional_fi_multi_mr_OBJECTS = functional/multi_mr.$(OBJEXT)
+functional_fi_multi_mr_OBJECTS = $(am_functional_fi_multi_mr_OBJECTS)
+functional_fi_multi_mr_DEPENDENCIES = libfabtests.la
+am_functional_fi_poll_OBJECTS = functional/poll.$(OBJEXT)
+functional_fi_poll_OBJECTS = $(am_functional_fi_poll_OBJECTS)
+functional_fi_poll_DEPENDENCIES = libfabtests.la
+am_functional_fi_rdm_OBJECTS = functional/rdm.$(OBJEXT)
+functional_fi_rdm_OBJECTS = $(am_functional_fi_rdm_OBJECTS)
+functional_fi_rdm_DEPENDENCIES = libfabtests.la
+am_functional_fi_rdm_atomic_OBJECTS = functional/rdm_atomic.$(OBJEXT)
+functional_fi_rdm_atomic_OBJECTS =  \
+	$(am_functional_fi_rdm_atomic_OBJECTS)
+functional_fi_rdm_atomic_DEPENDENCIES = libfabtests.la
+am_functional_fi_rdm_deferred_wq_OBJECTS =  \
+	functional/rdm_deferred_wq.$(OBJEXT)
+functional_fi_rdm_deferred_wq_OBJECTS =  \
+	$(am_functional_fi_rdm_deferred_wq_OBJECTS)
+functional_fi_rdm_deferred_wq_DEPENDENCIES = libfabtests.la
+am_functional_fi_rdm_multi_domain_OBJECTS =  \
+	functional/rdm_multi_domain.$(OBJEXT)
+functional_fi_rdm_multi_domain_OBJECTS =  \
+	$(am_functional_fi_rdm_multi_domain_OBJECTS)
+functional_fi_rdm_multi_domain_DEPENDENCIES = libfabtests.la
+am_functional_fi_rdm_multi_recv_OBJECTS =  \
+	functional/rdm_multi_recv.$(OBJEXT)
+functional_fi_rdm_multi_recv_OBJECTS =  \
+	$(am_functional_fi_rdm_multi_recv_OBJECTS)
+functional_fi_rdm_multi_recv_DEPENDENCIES = libfabtests.la
+am_functional_fi_rdm_rma_simple_OBJECTS =  \
+	functional/rdm_rma_simple.$(OBJEXT)
+functional_fi_rdm_rma_simple_OBJECTS =  \
+	$(am_functional_fi_rdm_rma_simple_OBJECTS)
+functional_fi_rdm_rma_simple_DEPENDENCIES = libfabtests.la
+am_functional_fi_rdm_rma_trigger_OBJECTS =  \
+	functional/rdm_rma_trigger.$(OBJEXT)
+functional_fi_rdm_rma_trigger_OBJECTS =  \
+	$(am_functional_fi_rdm_rma_trigger_OBJECTS)
+functional_fi_rdm_rma_trigger_DEPENDENCIES = libfabtests.la
+am_functional_fi_rdm_shared_av_OBJECTS =  \
+	functional/rdm_shared_av.$(OBJEXT)
+functional_fi_rdm_shared_av_OBJECTS =  \
+	$(am_functional_fi_rdm_shared_av_OBJECTS)
+functional_fi_rdm_shared_av_DEPENDENCIES = libfabtests.la
+am_functional_fi_rdm_tagged_peek_OBJECTS =  \
+	functional/rdm_tagged_peek.$(OBJEXT)
+functional_fi_rdm_tagged_peek_OBJECTS =  \
+	$(am_functional_fi_rdm_tagged_peek_OBJECTS)
+functional_fi_rdm_tagged_peek_DEPENDENCIES = libfabtests.la
+am_functional_fi_recv_cancel_OBJECTS =  \
+	functional/recv_cancel.$(OBJEXT)
+functional_fi_recv_cancel_OBJECTS =  \
+	$(am_functional_fi_recv_cancel_OBJECTS)
+functional_fi_recv_cancel_DEPENDENCIES = libfabtests.la
+am_functional_fi_resmgmt_test_OBJECTS =  \
+	functional/resmgmt_test.$(OBJEXT)
+functional_fi_resmgmt_test_OBJECTS =  \
+	$(am_functional_fi_resmgmt_test_OBJECTS)
+functional_fi_resmgmt_test_DEPENDENCIES = libfabtests.la
+am_functional_fi_scalable_ep_OBJECTS =  \
+	functional/scalable_ep.$(OBJEXT)
+functional_fi_scalable_ep_OBJECTS =  \
+	$(am_functional_fi_scalable_ep_OBJECTS)
+functional_fi_scalable_ep_DEPENDENCIES = libfabtests.la
+am_functional_fi_shared_ctx_OBJECTS = functional/shared_ctx.$(OBJEXT)
+functional_fi_shared_ctx_OBJECTS =  \
+	$(am_functional_fi_shared_ctx_OBJECTS)
+functional_fi_shared_ctx_DEPENDENCIES = libfabtests.la
+am_functional_fi_unexpected_msg_OBJECTS =  \
+	functional/unexpected_msg.$(OBJEXT)
+functional_fi_unexpected_msg_OBJECTS =  \
+	$(am_functional_fi_unexpected_msg_OBJECTS)
+functional_fi_unexpected_msg_DEPENDENCIES = libfabtests.la
+am_ubertest_fi_ubertest_OBJECTS = ubertest/ofi_atomic.$(OBJEXT) \
+	ubertest/uber.$(OBJEXT) ubertest/connect.$(OBJEXT) \
+	ubertest/cq.$(OBJEXT) ubertest/config.$(OBJEXT) \
+	ubertest/domain.$(OBJEXT) ubertest/ep.$(OBJEXT) \
+	ubertest/xfer.$(OBJEXT) ubertest/verify.$(OBJEXT) \
+	ubertest/test_ctrl.$(OBJEXT)
+ubertest_fi_ubertest_OBJECTS = $(am_ubertest_fi_ubertest_OBJECTS)
+ubertest_fi_ubertest_DEPENDENCIES = libfabtests.la
 am__objects_3 = unit/common.$(OBJEXT)
 am_unit_fi_av_test_OBJECTS = unit/av_test.$(OBJEXT) $(am__objects_3)
 unit_fi_av_test_OBJECTS = $(am_unit_fi_av_test_OBJECTS)
@@ -356,6 +348,10 @@ unit_fi_getinfo_test_DEPENDENCIES = libfabtests.la
 am_unit_fi_mr_test_OBJECTS = unit/mr_test.$(OBJEXT) $(am__objects_3)
 unit_fi_mr_test_OBJECTS = $(am_unit_fi_mr_test_OBJECTS)
 unit_fi_mr_test_DEPENDENCIES = libfabtests.la
+am_unit_fi_resource_freeing_OBJECTS = unit/resource_freeing.$(OBJEXT)
+unit_fi_resource_freeing_OBJECTS =  \
+	$(am_unit_fi_resource_freeing_OBJECTS)
+unit_fi_resource_freeing_DEPENDENCIES = libfabtests.la
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -426,37 +422,37 @@ SOURCES = $(libfabtests_la_SOURCES) \
 	$(benchmarks_fi_rdm_pingpong_SOURCES) \
 	$(benchmarks_fi_rdm_tagged_bw_SOURCES) \
 	$(benchmarks_fi_rdm_tagged_pingpong_SOURCES) \
-	$(benchmarks_fi_rma_bw_SOURCES) $(complex_fi_ubertest_SOURCES) \
-	$(ported_libibverbs_fi_rc_pingpong_SOURCES) \
-	$(ported_librdmacm_fi_cmatose_SOURCES) \
-	$(simple_fi_av_xfer_SOURCES) $(simple_fi_cm_data_SOURCES) \
-	$(simple_fi_cq_data_SOURCES) $(simple_fi_dgram_SOURCES) \
-	$(simple_fi_dgram_waitset_SOURCES) \
-	$(simple_fi_inj_complete_SOURCES) $(simple_fi_mcast_SOURCES) \
-	$(simple_fi_msg_SOURCES) $(simple_fi_msg_epoll_SOURCES) \
-	$(simple_fi_msg_sockets_SOURCES) $(simple_fi_multi_ep_SOURCES) \
-	$(simple_fi_multi_mr_SOURCES) $(simple_fi_poll_SOURCES) \
-	$(simple_fi_rdm_SOURCES) $(simple_fi_rdm_deferred_wq_SOURCES) \
-	$(simple_fi_rdm_multi_domain_SOURCES) \
-	$(simple_fi_rdm_rma_simple_SOURCES) \
-	$(simple_fi_rdm_rma_trigger_SOURCES) \
-	$(simple_fi_rdm_shared_av_SOURCES) \
-	$(simple_fi_rdm_tagged_peek_SOURCES) \
-	$(simple_fi_recv_cancel_SOURCES) \
-	$(simple_fi_resource_freeing_SOURCES) \
-	$(simple_fi_scalable_ep_SOURCES) \
-	$(simple_fi_shared_ctx_SOURCES) \
-	$(simple_fi_unexpected_msg_SOURCES) \
-	$(streaming_fi_msg_rma_SOURCES) \
-	$(streaming_fi_msg_stream_SOURCES) \
-	$(streaming_fi_rdm_atomic_SOURCES) \
-	$(streaming_fi_rdm_multi_recv_SOURCES) \
-	$(streaming_fi_rdm_rma_SOURCES) \
-	$(streaming_fi_resmgmt_test_SOURCES) \
-	$(unit_fi_av_test_SOURCES) $(unit_fi_cntr_test_SOURCES) \
-	$(unit_fi_cq_test_SOURCES) $(unit_fi_dom_test_SOURCES) \
-	$(unit_fi_eq_test_SOURCES) $(unit_fi_getinfo_test_SOURCES) \
-	$(unit_fi_mr_test_SOURCES)
+	$(benchmarks_fi_rma_bw_SOURCES) \
+	$(functional_fi_av_xfer_SOURCES) \
+	$(functional_fi_cm_data_SOURCES) \
+	$(functional_fi_cq_data_SOURCES) \
+	$(functional_fi_dgram_SOURCES) \
+	$(functional_fi_dgram_waitset_SOURCES) \
+	$(functional_fi_inj_complete_SOURCES) \
+	$(functional_fi_mcast_SOURCES) $(functional_fi_msg_SOURCES) \
+	$(functional_fi_msg_epoll_SOURCES) \
+	$(functional_fi_msg_sockets_SOURCES) \
+	$(functional_fi_multi_ep_SOURCES) \
+	$(functional_fi_multi_mr_SOURCES) \
+	$(functional_fi_poll_SOURCES) $(functional_fi_rdm_SOURCES) \
+	$(functional_fi_rdm_atomic_SOURCES) \
+	$(functional_fi_rdm_deferred_wq_SOURCES) \
+	$(functional_fi_rdm_multi_domain_SOURCES) \
+	$(functional_fi_rdm_multi_recv_SOURCES) \
+	$(functional_fi_rdm_rma_simple_SOURCES) \
+	$(functional_fi_rdm_rma_trigger_SOURCES) \
+	$(functional_fi_rdm_shared_av_SOURCES) \
+	$(functional_fi_rdm_tagged_peek_SOURCES) \
+	$(functional_fi_recv_cancel_SOURCES) \
+	$(functional_fi_resmgmt_test_SOURCES) \
+	$(functional_fi_scalable_ep_SOURCES) \
+	$(functional_fi_shared_ctx_SOURCES) \
+	$(functional_fi_unexpected_msg_SOURCES) \
+	$(ubertest_fi_ubertest_SOURCES) $(unit_fi_av_test_SOURCES) \
+	$(unit_fi_cntr_test_SOURCES) $(unit_fi_cq_test_SOURCES) \
+	$(unit_fi_dom_test_SOURCES) $(unit_fi_eq_test_SOURCES) \
+	$(unit_fi_getinfo_test_SOURCES) $(unit_fi_mr_test_SOURCES) \
+	$(unit_fi_resource_freeing_SOURCES)
 DIST_SOURCES = $(am__libfabtests_la_SOURCES_DIST) \
 	$(benchmarks_fi_dgram_pingpong_SOURCES) \
 	$(benchmarks_fi_msg_bw_SOURCES) \
@@ -465,42 +461,43 @@ DIST_SOURCES = $(am__libfabtests_la_SOURCES_DIST) \
 	$(benchmarks_fi_rdm_pingpong_SOURCES) \
 	$(benchmarks_fi_rdm_tagged_bw_SOURCES) \
 	$(benchmarks_fi_rdm_tagged_pingpong_SOURCES) \
-	$(benchmarks_fi_rma_bw_SOURCES) $(complex_fi_ubertest_SOURCES) \
-	$(ported_libibverbs_fi_rc_pingpong_SOURCES) \
-	$(ported_librdmacm_fi_cmatose_SOURCES) \
-	$(simple_fi_av_xfer_SOURCES) $(simple_fi_cm_data_SOURCES) \
-	$(simple_fi_cq_data_SOURCES) $(simple_fi_dgram_SOURCES) \
-	$(simple_fi_dgram_waitset_SOURCES) \
-	$(simple_fi_inj_complete_SOURCES) $(simple_fi_mcast_SOURCES) \
-	$(simple_fi_msg_SOURCES) $(simple_fi_msg_epoll_SOURCES) \
-	$(simple_fi_msg_sockets_SOURCES) $(simple_fi_multi_ep_SOURCES) \
-	$(simple_fi_multi_mr_SOURCES) $(simple_fi_poll_SOURCES) \
-	$(simple_fi_rdm_SOURCES) $(simple_fi_rdm_deferred_wq_SOURCES) \
-	$(simple_fi_rdm_multi_domain_SOURCES) \
-	$(simple_fi_rdm_rma_simple_SOURCES) \
-	$(simple_fi_rdm_rma_trigger_SOURCES) \
-	$(simple_fi_rdm_shared_av_SOURCES) \
-	$(simple_fi_rdm_tagged_peek_SOURCES) \
-	$(simple_fi_recv_cancel_SOURCES) \
-	$(simple_fi_resource_freeing_SOURCES) \
-	$(simple_fi_scalable_ep_SOURCES) \
-	$(simple_fi_shared_ctx_SOURCES) \
-	$(simple_fi_unexpected_msg_SOURCES) \
-	$(streaming_fi_msg_rma_SOURCES) \
-	$(streaming_fi_msg_stream_SOURCES) \
-	$(streaming_fi_rdm_atomic_SOURCES) \
-	$(streaming_fi_rdm_multi_recv_SOURCES) \
-	$(streaming_fi_rdm_rma_SOURCES) \
-	$(streaming_fi_resmgmt_test_SOURCES) \
-	$(unit_fi_av_test_SOURCES) $(unit_fi_cntr_test_SOURCES) \
-	$(unit_fi_cq_test_SOURCES) $(unit_fi_dom_test_SOURCES) \
-	$(unit_fi_eq_test_SOURCES) $(unit_fi_getinfo_test_SOURCES) \
-	$(unit_fi_mr_test_SOURCES)
+	$(benchmarks_fi_rma_bw_SOURCES) \
+	$(functional_fi_av_xfer_SOURCES) \
+	$(functional_fi_cm_data_SOURCES) \
+	$(functional_fi_cq_data_SOURCES) \
+	$(functional_fi_dgram_SOURCES) \
+	$(functional_fi_dgram_waitset_SOURCES) \
+	$(functional_fi_inj_complete_SOURCES) \
+	$(functional_fi_mcast_SOURCES) $(functional_fi_msg_SOURCES) \
+	$(functional_fi_msg_epoll_SOURCES) \
+	$(functional_fi_msg_sockets_SOURCES) \
+	$(functional_fi_multi_ep_SOURCES) \
+	$(functional_fi_multi_mr_SOURCES) \
+	$(functional_fi_poll_SOURCES) $(functional_fi_rdm_SOURCES) \
+	$(functional_fi_rdm_atomic_SOURCES) \
+	$(functional_fi_rdm_deferred_wq_SOURCES) \
+	$(functional_fi_rdm_multi_domain_SOURCES) \
+	$(functional_fi_rdm_multi_recv_SOURCES) \
+	$(functional_fi_rdm_rma_simple_SOURCES) \
+	$(functional_fi_rdm_rma_trigger_SOURCES) \
+	$(functional_fi_rdm_shared_av_SOURCES) \
+	$(functional_fi_rdm_tagged_peek_SOURCES) \
+	$(functional_fi_recv_cancel_SOURCES) \
+	$(functional_fi_resmgmt_test_SOURCES) \
+	$(functional_fi_scalable_ep_SOURCES) \
+	$(functional_fi_shared_ctx_SOURCES) \
+	$(functional_fi_unexpected_msg_SOURCES) \
+	$(ubertest_fi_ubertest_SOURCES) $(unit_fi_av_test_SOURCES) \
+	$(unit_fi_cntr_test_SOURCES) $(unit_fi_cq_test_SOURCES) \
+	$(unit_fi_dom_test_SOURCES) $(unit_fi_eq_test_SOURCES) \
+	$(unit_fi_getinfo_test_SOURCES) $(unit_fi_mr_test_SOURCES) \
+	$(unit_fi_resource_freeing_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
+man1dir = $(mandir)/man1
 man7dir = $(mandir)/man7
 NROFF = nroff
 MANS = $(man_MANS)
@@ -691,18 +688,22 @@ nobase_dist_config_DATA = \
         test_configs/udp/all.test \
         test_configs/udp/lat_bw.test \
         test_configs/udp/quick.test \
-        test_configs/udp/simple.test \
-	test_configs/udp/udp.exclude \
+        test_configs/udp/functional.test \
+        test_configs/udp/udp.exclude \
+        test_configs/tcp/tcp.exclude \
         test_configs/verbs/all.test \
         test_configs/verbs/quick.test \
-	test_configs/verbs/verbs.exclude \
+	test_configs/verbs/exclude \
 	test_configs/usnic/all.test \
 	test_configs/usnic/quick.test \
 	test_configs/psm/all.test \
 	test_configs/psm2/all.test \
 	test_configs/psm2/verify.test \
 	test_configs/psm2/psm2.exclude \
-	test_configs/ofi_rxm/ofi_rxm.exclude \
+	test_configs/ofi_rxm/verbs/all.test \
+	test_configs/ofi_rxm/verbs/exclude \
+	test_configs/ofi_rxd/ofi_rxd.exclude \
+	test_configs/ofi_rxd/udp.test \
 	test_configs/shm/all.test \
 	test_configs/shm/verify.test
 
@@ -718,130 +719,114 @@ unit_srcs = \
 	include/unit_common.h \
 	unit/common.c
 
-simple_fi_av_xfer_SOURCES = \
-	simple/av_xfer.c
+functional_fi_av_xfer_SOURCES = \
+	functional/av_xfer.c
 
-simple_fi_av_xfer_LDADD = libfabtests.la
-simple_fi_msg_sockets_SOURCES = \
-	simple/msg_sockets.c
+functional_fi_av_xfer_LDADD = libfabtests.la
+functional_fi_msg_sockets_SOURCES = \
+	functional/msg_sockets.c
 
-simple_fi_msg_sockets_LDADD = libfabtests.la
-simple_fi_msg_epoll_SOURCES = \
-	simple/msg_epoll.c
+functional_fi_msg_sockets_LDADD = libfabtests.la
+functional_fi_msg_epoll_SOURCES = \
+	functional/msg_epoll.c
 
-simple_fi_msg_epoll_LDADD = libfabtests.la
-simple_fi_msg_SOURCES = \
-	simple/msg.c
+functional_fi_msg_epoll_LDADD = libfabtests.la
+functional_fi_msg_SOURCES = \
+	functional/msg.c
 
-simple_fi_msg_LDADD = libfabtests.la
-simple_fi_rdm_SOURCES = \
-	simple/rdm.c
+functional_fi_msg_LDADD = libfabtests.la
+functional_fi_rdm_SOURCES = \
+	functional/rdm.c
 
-simple_fi_rdm_LDADD = libfabtests.la
-simple_fi_rdm_shared_av_SOURCES = \
-	simple/rdm_shared_av.c
+functional_fi_rdm_LDADD = libfabtests.la
+functional_fi_rdm_shared_av_SOURCES = \
+	functional/rdm_shared_av.c
 
-simple_fi_rdm_shared_av_LDADD = libfabtests.la
-simple_fi_rdm_rma_simple_SOURCES = \
-	simple/rdm_rma_simple.c
+functional_fi_rdm_shared_av_LDADD = libfabtests.la
+functional_fi_rdm_rma_simple_SOURCES = \
+	functional/rdm_rma_simple.c
 
-simple_fi_rdm_rma_simple_LDADD = libfabtests.la
-simple_fi_rdm_rma_trigger_SOURCES = \
-	simple/rdm_rma_trigger.c
+functional_fi_rdm_rma_simple_LDADD = libfabtests.la
+functional_fi_rdm_rma_trigger_SOURCES = \
+	functional/rdm_rma_trigger.c
 
-simple_fi_rdm_rma_trigger_LDADD = libfabtests.la
-simple_fi_rdm_deferred_wq_SOURCES = \
-	simple/rdm_deferred_wq.c
+functional_fi_rdm_rma_trigger_LDADD = libfabtests.la
+functional_fi_rdm_deferred_wq_SOURCES = \
+	functional/rdm_deferred_wq.c
 
-simple_fi_rdm_deferred_wq_LDADD = libfabtests.la
-simple_fi_dgram_SOURCES = \
-	simple/dgram.c
+functional_fi_rdm_deferred_wq_LDADD = libfabtests.la
+functional_fi_dgram_SOURCES = \
+	functional/dgram.c
 
-simple_fi_dgram_LDADD = libfabtests.la
-simple_fi_mcast_SOURCES = \
-	simple/mcast.c
+functional_fi_dgram_LDADD = libfabtests.la
+functional_fi_mcast_SOURCES = \
+	functional/mcast.c
 
-simple_fi_mcast_LDADD = libfabtests.la
-simple_fi_dgram_waitset_SOURCES = \
-	simple/dgram_waitset.c
+functional_fi_mcast_LDADD = libfabtests.la
+functional_fi_dgram_waitset_SOURCES = \
+	functional/dgram_waitset.c
 
-simple_fi_dgram_waitset_LDADD = libfabtests.la
-simple_fi_rdm_tagged_peek_SOURCES = \
-	simple/rdm_tagged_peek.c
+functional_fi_dgram_waitset_LDADD = libfabtests.la
+functional_fi_rdm_tagged_peek_SOURCES = \
+	functional/rdm_tagged_peek.c
 
-simple_fi_rdm_tagged_peek_LDADD = libfabtests.la
-simple_fi_cq_data_SOURCES = \
-	simple/cq_data.c
+functional_fi_rdm_tagged_peek_LDADD = libfabtests.la
+functional_fi_cq_data_SOURCES = \
+	functional/cq_data.c
 
-simple_fi_cq_data_LDADD = libfabtests.la
-simple_fi_cm_data_SOURCES = \
-	simple/cm_data.c
+functional_fi_cq_data_LDADD = libfabtests.la
+functional_fi_cm_data_SOURCES = \
+	functional/cm_data.c
 
-simple_fi_cm_data_LDADD = libfabtests.la
-simple_fi_scalable_ep_SOURCES = \
-	simple/scalable_ep.c
+functional_fi_cm_data_LDADD = libfabtests.la
+functional_fi_scalable_ep_SOURCES = \
+	functional/scalable_ep.c
 
-simple_fi_scalable_ep_LDADD = libfabtests.la
-simple_fi_shared_ctx_SOURCES = \
-	simple/shared_ctx.c
+functional_fi_scalable_ep_LDADD = libfabtests.la
+functional_fi_shared_ctx_SOURCES = \
+	functional/shared_ctx.c
 
-simple_fi_shared_ctx_LDADD = libfabtests.la
-simple_fi_poll_SOURCES = \
-	simple/poll.c
+functional_fi_shared_ctx_LDADD = libfabtests.la
+functional_fi_poll_SOURCES = \
+	functional/poll.c
 
-simple_fi_poll_LDADD = libfabtests.la
-simple_fi_multi_ep_SOURCES = \
-	simple/multi_ep.c
+functional_fi_poll_LDADD = libfabtests.la
+functional_fi_multi_ep_SOURCES = \
+	functional/multi_ep.c
 
-simple_fi_multi_ep_LDADD = libfabtests.la
-simple_fi_multi_mr_SOURCES = \
-	simple/multi_mr.c
+functional_fi_multi_ep_LDADD = libfabtests.la
+functional_fi_multi_mr_SOURCES = \
+	functional/multi_mr.c
 
-simple_fi_multi_mr_LDADD = libfabtests.la
-simple_fi_unexpected_msg_SOURCES = \
-	simple/unexpected_msg.c
+functional_fi_multi_mr_LDADD = libfabtests.la
+functional_fi_unexpected_msg_SOURCES = \
+	functional/unexpected_msg.c
 
-simple_fi_unexpected_msg_LDADD = libfabtests.la
-simple_fi_rdm_multi_domain_SOURCES = \
-	simple/rdm_multi_domain.c
+functional_fi_unexpected_msg_LDADD = libfabtests.la
+functional_fi_rdm_multi_domain_SOURCES = \
+	functional/rdm_multi_domain.c
 
-simple_fi_rdm_multi_domain_LDADD = libfabtests.la
-simple_fi_recv_cancel_SOURCES = \
-	simple/recv_cancel.c
+functional_fi_rdm_multi_domain_LDADD = libfabtests.la
+functional_fi_recv_cancel_SOURCES = \
+	functional/recv_cancel.c
 
-simple_fi_recv_cancel_LDADD = libfabtests.la
-simple_fi_inj_complete_SOURCES = \
-	simple/inj_complete.c
+functional_fi_recv_cancel_LDADD = libfabtests.la
+functional_fi_inj_complete_SOURCES = \
+	functional/inj_complete.c
 
-simple_fi_inj_complete_LDADD = libfabtests.la
-simple_fi_resource_freeing_SOURCES = \
-	simple/resource_freeing.c
+functional_fi_inj_complete_LDADD = libfabtests.la
+functional_fi_resmgmt_test_SOURCES = \
+	functional/resmgmt_test.c
 
-simple_fi_resource_freeing_LDADD = libfabtests.la
-streaming_fi_resmgmt_test_SOURCES = \
-	streaming/resmgmt_test.c
+functional_fi_resmgmt_test_LDADD = libfabtests.la
+functional_fi_rdm_atomic_SOURCES = \
+	functional/rdm_atomic.c
 
-streaming_fi_resmgmt_test_LDADD = libfabtests.la
-streaming_fi_msg_rma_SOURCES = \
-	streaming/msg_rma.c
+functional_fi_rdm_atomic_LDADD = libfabtests.la
+functional_fi_rdm_multi_recv_SOURCES = \
+	functional/rdm_multi_recv.c
 
-streaming_fi_msg_rma_LDADD = libfabtests.la
-streaming_fi_msg_stream_SOURCES = \
-	streaming/msg.c
-
-streaming_fi_msg_stream_LDADD = libfabtests.la
-streaming_fi_rdm_atomic_SOURCES = \
-	streaming/rdm_atomic.c
-
-streaming_fi_rdm_atomic_LDADD = libfabtests.la
-streaming_fi_rdm_multi_recv_SOURCES = \
-	streaming/rdm_multi_recv.c
-
-streaming_fi_rdm_multi_recv_LDADD = libfabtests.la
-streaming_fi_rdm_rma_SOURCES = \
-	streaming/rdm_rma.c
-
-streaming_fi_rdm_rma_LDADD = libfabtests.la
+functional_fi_rdm_multi_recv_LDADD = libfabtests.la
 benchmarks_fi_msg_pingpong_SOURCES = \
 	benchmarks/msg_pingpong.c \
 	$(benchmarks_srcs)
@@ -917,32 +902,77 @@ unit_fi_getinfo_test_SOURCES = \
 	$(unit_srcs)
 
 unit_fi_getinfo_test_LDADD = libfabtests.la
-ported_libibverbs_fi_rc_pingpong_SOURCES = \
-	ported/libibverbs/rc_pingpong.c
+unit_fi_resource_freeing_SOURCES = \
+	unit/resource_freeing.c
 
-ported_libibverbs_fi_rc_pingpong_LDADD = libfabtests.la
-ported_librdmacm_fi_cmatose_SOURCES = \
-	ported/librdmacm/cmatose.c
+unit_fi_resource_freeing_LDADD = libfabtests.la
+ubertest_fi_ubertest_SOURCES = \
+	ubertest/fabtest.h \
+	ubertest/ofi_atomic.h \
+	ubertest/ofi_atomic.c \
+	ubertest/uber.c \
+	ubertest/connect.c \
+	ubertest/cq.c \
+	ubertest/config.c \
+	ubertest/domain.c \
+	ubertest/ep.c \
+	ubertest/xfer.c \
+	ubertest/verify.c \
+	ubertest/test_ctrl.c
 
-ported_librdmacm_fi_cmatose_LDADD = libfabtests.la
-complex_fi_ubertest_SOURCES = \
-	complex/fabtest.h \
-	complex/ofi_atomic.h \
-	complex/ofi_atomic.c \
-	complex/ft_main.c \
-	complex/ft_comm.c \
-	complex/ft_comp.c \
-	complex/ft_config.c \
-	complex/ft_domain.c \
-	complex/ft_endpoint.c \
-	complex/ft_msg.c \
-	complex/ft_verify.c \
-	complex/ft_test.c
+ubertest_fi_ubertest_LDADD = libfabtests.la
+real_man_pages = \
+	 man/man7/fabtests.7
 
-complex_fi_ubertest_LDADD = libfabtests.la
-man_MANS = man/fabtests.7
+dummy_man_pages = \
+	man/man1/fi_av_xfer.1 \
+	man/man1/fi_cm_data.1 \
+	man/man1/fi_cq_data.1 \
+	man/man1/fi_dgram.1 \
+	man/man1/fi_dgram_waitset.1 \
+	man/man1/fi_inj_complete.1 \
+	man/man1/fi_mcast.1 \
+	man/man1/fi_msg.1 \
+	man/man1/fi_msg_epoll.1 \
+	man/man1/fi_msg_sockets.1 \
+	man/man1/fi_multi_ep.1 \
+	man/man1/fi_multi_mr.1 \
+	man/man1/fi_poll.1 \
+	man/man1/fi_rdm.1 \
+	man/man1/fi_rdm_atomic.1 \
+	man/man1/fi_rdm_deferred_wq.1 \
+	man/man1/fi_rdm_multi_domain.1 \
+	man/man1/fi_rdm_multi_recv.1 \
+	man/man1/fi_rdm_rma_simple.1 \
+	man/man1/fi_rdm_rma_trigger.1 \
+	man/man1/fi_rdm_shared_av.1 \
+	man/man1/fi_rdm_tagged_peek.1 \
+	man/man1/fi_recv_cancel.1 \
+	man/man1/fi_resmgmt_test.1 \
+	man/man1/fi_scalable_ep.1 \
+	man/man1/fi_shared_ctx.1 \
+	man/man1/fi_unexpected_msg.1 \
+	man/man1/fi_dgram_pingpong.1 \
+	man/man1/fi_msg_bw.1 \
+	man/man1/fi_msg_pingpong.1 \
+	man/man1/fi_rdm_cntr_pingpong.1 \
+	man/man1/fi_rdm_pingpong.1 \
+	man/man1/fi_rdm_tagged_bw.1 \
+	man/man1/fi_rdm_tagged_pingpong.1 \
+	man/man1/fi_rma_bw.1 \
+	man/man1/fi_av_test.1 \
+	man/man1/fi_cntr_test.1 \
+	man/man1/fi_cq_test.1 \
+	man/man1/fi_dom_test.1 \
+	man/man1/fi_eq_test.1 \
+	man/man1/fi_getinfo_test.1 \
+	man/man1/fi_mr_test.1 \
+	man/man1/fi_resource_freeing.1 \
+	man/man1/fi_ubertest.1
+
+man_MANS = $(real_man_pages) $(dummy_man_pages)
 EXTRA_DIST = \
-	fabtests.spec.in $(man_MANS)
+	fabtests.spec.in $(real_man_pages) $(dummy_man_pages)
 
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
@@ -1136,259 +1166,204 @@ benchmarks/rma_bw.$(OBJEXT): benchmarks/$(am__dirstamp) \
 benchmarks/fi_rma_bw$(EXEEXT): $(benchmarks_fi_rma_bw_OBJECTS) $(benchmarks_fi_rma_bw_DEPENDENCIES) $(EXTRA_benchmarks_fi_rma_bw_DEPENDENCIES) benchmarks/$(am__dirstamp)
 	@rm -f benchmarks/fi_rma_bw$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(benchmarks_fi_rma_bw_OBJECTS) $(benchmarks_fi_rma_bw_LDADD) $(LIBS)
-complex/$(am__dirstamp):
-	@$(MKDIR_P) complex
-	@: > complex/$(am__dirstamp)
-complex/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) complex/$(DEPDIR)
-	@: > complex/$(DEPDIR)/$(am__dirstamp)
-complex/ofi_atomic.$(OBJEXT): complex/$(am__dirstamp) \
-	complex/$(DEPDIR)/$(am__dirstamp)
-complex/ft_main.$(OBJEXT): complex/$(am__dirstamp) \
-	complex/$(DEPDIR)/$(am__dirstamp)
-complex/ft_comm.$(OBJEXT): complex/$(am__dirstamp) \
-	complex/$(DEPDIR)/$(am__dirstamp)
-complex/ft_comp.$(OBJEXT): complex/$(am__dirstamp) \
-	complex/$(DEPDIR)/$(am__dirstamp)
-complex/ft_config.$(OBJEXT): complex/$(am__dirstamp) \
-	complex/$(DEPDIR)/$(am__dirstamp)
-complex/ft_domain.$(OBJEXT): complex/$(am__dirstamp) \
-	complex/$(DEPDIR)/$(am__dirstamp)
-complex/ft_endpoint.$(OBJEXT): complex/$(am__dirstamp) \
-	complex/$(DEPDIR)/$(am__dirstamp)
-complex/ft_msg.$(OBJEXT): complex/$(am__dirstamp) \
-	complex/$(DEPDIR)/$(am__dirstamp)
-complex/ft_verify.$(OBJEXT): complex/$(am__dirstamp) \
-	complex/$(DEPDIR)/$(am__dirstamp)
-complex/ft_test.$(OBJEXT): complex/$(am__dirstamp) \
-	complex/$(DEPDIR)/$(am__dirstamp)
+functional/$(am__dirstamp):
+	@$(MKDIR_P) functional
+	@: > functional/$(am__dirstamp)
+functional/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) functional/$(DEPDIR)
+	@: > functional/$(DEPDIR)/$(am__dirstamp)
+functional/av_xfer.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-complex/fi_ubertest$(EXEEXT): $(complex_fi_ubertest_OBJECTS) $(complex_fi_ubertest_DEPENDENCIES) $(EXTRA_complex_fi_ubertest_DEPENDENCIES) complex/$(am__dirstamp)
-	@rm -f complex/fi_ubertest$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(complex_fi_ubertest_OBJECTS) $(complex_fi_ubertest_LDADD) $(LIBS)
-ported/libibverbs/$(am__dirstamp):
-	@$(MKDIR_P) ported/libibverbs
-	@: > ported/libibverbs/$(am__dirstamp)
-ported/libibverbs/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) ported/libibverbs/$(DEPDIR)
-	@: > ported/libibverbs/$(DEPDIR)/$(am__dirstamp)
-ported/libibverbs/rc_pingpong.$(OBJEXT):  \
-	ported/libibverbs/$(am__dirstamp) \
-	ported/libibverbs/$(DEPDIR)/$(am__dirstamp)
+functional/fi_av_xfer$(EXEEXT): $(functional_fi_av_xfer_OBJECTS) $(functional_fi_av_xfer_DEPENDENCIES) $(EXTRA_functional_fi_av_xfer_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_av_xfer$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_av_xfer_OBJECTS) $(functional_fi_av_xfer_LDADD) $(LIBS)
+functional/cm_data.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-ported/libibverbs/fi_rc_pingpong$(EXEEXT): $(ported_libibverbs_fi_rc_pingpong_OBJECTS) $(ported_libibverbs_fi_rc_pingpong_DEPENDENCIES) $(EXTRA_ported_libibverbs_fi_rc_pingpong_DEPENDENCIES) ported/libibverbs/$(am__dirstamp)
-	@rm -f ported/libibverbs/fi_rc_pingpong$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(ported_libibverbs_fi_rc_pingpong_OBJECTS) $(ported_libibverbs_fi_rc_pingpong_LDADD) $(LIBS)
-ported/librdmacm/$(am__dirstamp):
-	@$(MKDIR_P) ported/librdmacm
-	@: > ported/librdmacm/$(am__dirstamp)
-ported/librdmacm/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) ported/librdmacm/$(DEPDIR)
-	@: > ported/librdmacm/$(DEPDIR)/$(am__dirstamp)
-ported/librdmacm/cmatose.$(OBJEXT): ported/librdmacm/$(am__dirstamp) \
-	ported/librdmacm/$(DEPDIR)/$(am__dirstamp)
+functional/fi_cm_data$(EXEEXT): $(functional_fi_cm_data_OBJECTS) $(functional_fi_cm_data_DEPENDENCIES) $(EXTRA_functional_fi_cm_data_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_cm_data$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_cm_data_OBJECTS) $(functional_fi_cm_data_LDADD) $(LIBS)
+functional/cq_data.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-ported/librdmacm/fi_cmatose$(EXEEXT): $(ported_librdmacm_fi_cmatose_OBJECTS) $(ported_librdmacm_fi_cmatose_DEPENDENCIES) $(EXTRA_ported_librdmacm_fi_cmatose_DEPENDENCIES) ported/librdmacm/$(am__dirstamp)
-	@rm -f ported/librdmacm/fi_cmatose$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(ported_librdmacm_fi_cmatose_OBJECTS) $(ported_librdmacm_fi_cmatose_LDADD) $(LIBS)
-simple/$(am__dirstamp):
-	@$(MKDIR_P) simple
-	@: > simple/$(am__dirstamp)
-simple/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) simple/$(DEPDIR)
-	@: > simple/$(DEPDIR)/$(am__dirstamp)
-simple/av_xfer.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_cq_data$(EXEEXT): $(functional_fi_cq_data_OBJECTS) $(functional_fi_cq_data_DEPENDENCIES) $(EXTRA_functional_fi_cq_data_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_cq_data$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_cq_data_OBJECTS) $(functional_fi_cq_data_LDADD) $(LIBS)
+functional/dgram.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_av_xfer$(EXEEXT): $(simple_fi_av_xfer_OBJECTS) $(simple_fi_av_xfer_DEPENDENCIES) $(EXTRA_simple_fi_av_xfer_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_av_xfer$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_av_xfer_OBJECTS) $(simple_fi_av_xfer_LDADD) $(LIBS)
-simple/cm_data.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_dgram$(EXEEXT): $(functional_fi_dgram_OBJECTS) $(functional_fi_dgram_DEPENDENCIES) $(EXTRA_functional_fi_dgram_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_dgram$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_dgram_OBJECTS) $(functional_fi_dgram_LDADD) $(LIBS)
+functional/dgram_waitset.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_cm_data$(EXEEXT): $(simple_fi_cm_data_OBJECTS) $(simple_fi_cm_data_DEPENDENCIES) $(EXTRA_simple_fi_cm_data_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_cm_data$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_cm_data_OBJECTS) $(simple_fi_cm_data_LDADD) $(LIBS)
-simple/cq_data.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_dgram_waitset$(EXEEXT): $(functional_fi_dgram_waitset_OBJECTS) $(functional_fi_dgram_waitset_DEPENDENCIES) $(EXTRA_functional_fi_dgram_waitset_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_dgram_waitset$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_dgram_waitset_OBJECTS) $(functional_fi_dgram_waitset_LDADD) $(LIBS)
+functional/inj_complete.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_cq_data$(EXEEXT): $(simple_fi_cq_data_OBJECTS) $(simple_fi_cq_data_DEPENDENCIES) $(EXTRA_simple_fi_cq_data_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_cq_data$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_cq_data_OBJECTS) $(simple_fi_cq_data_LDADD) $(LIBS)
-simple/dgram.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_inj_complete$(EXEEXT): $(functional_fi_inj_complete_OBJECTS) $(functional_fi_inj_complete_DEPENDENCIES) $(EXTRA_functional_fi_inj_complete_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_inj_complete$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_inj_complete_OBJECTS) $(functional_fi_inj_complete_LDADD) $(LIBS)
+functional/mcast.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_dgram$(EXEEXT): $(simple_fi_dgram_OBJECTS) $(simple_fi_dgram_DEPENDENCIES) $(EXTRA_simple_fi_dgram_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_dgram$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_dgram_OBJECTS) $(simple_fi_dgram_LDADD) $(LIBS)
-simple/dgram_waitset.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_mcast$(EXEEXT): $(functional_fi_mcast_OBJECTS) $(functional_fi_mcast_DEPENDENCIES) $(EXTRA_functional_fi_mcast_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_mcast$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_mcast_OBJECTS) $(functional_fi_mcast_LDADD) $(LIBS)
+functional/msg.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_dgram_waitset$(EXEEXT): $(simple_fi_dgram_waitset_OBJECTS) $(simple_fi_dgram_waitset_DEPENDENCIES) $(EXTRA_simple_fi_dgram_waitset_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_dgram_waitset$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_dgram_waitset_OBJECTS) $(simple_fi_dgram_waitset_LDADD) $(LIBS)
-simple/inj_complete.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_msg$(EXEEXT): $(functional_fi_msg_OBJECTS) $(functional_fi_msg_DEPENDENCIES) $(EXTRA_functional_fi_msg_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_msg$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_msg_OBJECTS) $(functional_fi_msg_LDADD) $(LIBS)
+functional/msg_epoll.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_inj_complete$(EXEEXT): $(simple_fi_inj_complete_OBJECTS) $(simple_fi_inj_complete_DEPENDENCIES) $(EXTRA_simple_fi_inj_complete_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_inj_complete$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_inj_complete_OBJECTS) $(simple_fi_inj_complete_LDADD) $(LIBS)
-simple/mcast.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_msg_epoll$(EXEEXT): $(functional_fi_msg_epoll_OBJECTS) $(functional_fi_msg_epoll_DEPENDENCIES) $(EXTRA_functional_fi_msg_epoll_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_msg_epoll$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_msg_epoll_OBJECTS) $(functional_fi_msg_epoll_LDADD) $(LIBS)
+functional/msg_sockets.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_mcast$(EXEEXT): $(simple_fi_mcast_OBJECTS) $(simple_fi_mcast_DEPENDENCIES) $(EXTRA_simple_fi_mcast_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_mcast$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_mcast_OBJECTS) $(simple_fi_mcast_LDADD) $(LIBS)
-simple/msg.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_msg_sockets$(EXEEXT): $(functional_fi_msg_sockets_OBJECTS) $(functional_fi_msg_sockets_DEPENDENCIES) $(EXTRA_functional_fi_msg_sockets_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_msg_sockets$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_msg_sockets_OBJECTS) $(functional_fi_msg_sockets_LDADD) $(LIBS)
+functional/multi_ep.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_msg$(EXEEXT): $(simple_fi_msg_OBJECTS) $(simple_fi_msg_DEPENDENCIES) $(EXTRA_simple_fi_msg_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_msg$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_msg_OBJECTS) $(simple_fi_msg_LDADD) $(LIBS)
-simple/msg_epoll.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_multi_ep$(EXEEXT): $(functional_fi_multi_ep_OBJECTS) $(functional_fi_multi_ep_DEPENDENCIES) $(EXTRA_functional_fi_multi_ep_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_multi_ep$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_multi_ep_OBJECTS) $(functional_fi_multi_ep_LDADD) $(LIBS)
+functional/multi_mr.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_msg_epoll$(EXEEXT): $(simple_fi_msg_epoll_OBJECTS) $(simple_fi_msg_epoll_DEPENDENCIES) $(EXTRA_simple_fi_msg_epoll_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_msg_epoll$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_msg_epoll_OBJECTS) $(simple_fi_msg_epoll_LDADD) $(LIBS)
-simple/msg_sockets.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_multi_mr$(EXEEXT): $(functional_fi_multi_mr_OBJECTS) $(functional_fi_multi_mr_DEPENDENCIES) $(EXTRA_functional_fi_multi_mr_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_multi_mr$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_multi_mr_OBJECTS) $(functional_fi_multi_mr_LDADD) $(LIBS)
+functional/poll.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_msg_sockets$(EXEEXT): $(simple_fi_msg_sockets_OBJECTS) $(simple_fi_msg_sockets_DEPENDENCIES) $(EXTRA_simple_fi_msg_sockets_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_msg_sockets$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_msg_sockets_OBJECTS) $(simple_fi_msg_sockets_LDADD) $(LIBS)
-simple/multi_ep.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_poll$(EXEEXT): $(functional_fi_poll_OBJECTS) $(functional_fi_poll_DEPENDENCIES) $(EXTRA_functional_fi_poll_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_poll$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_poll_OBJECTS) $(functional_fi_poll_LDADD) $(LIBS)
+functional/rdm.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_multi_ep$(EXEEXT): $(simple_fi_multi_ep_OBJECTS) $(simple_fi_multi_ep_DEPENDENCIES) $(EXTRA_simple_fi_multi_ep_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_multi_ep$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_multi_ep_OBJECTS) $(simple_fi_multi_ep_LDADD) $(LIBS)
-simple/multi_mr.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_rdm$(EXEEXT): $(functional_fi_rdm_OBJECTS) $(functional_fi_rdm_DEPENDENCIES) $(EXTRA_functional_fi_rdm_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_rdm$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_rdm_OBJECTS) $(functional_fi_rdm_LDADD) $(LIBS)
+functional/rdm_atomic.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_multi_mr$(EXEEXT): $(simple_fi_multi_mr_OBJECTS) $(simple_fi_multi_mr_DEPENDENCIES) $(EXTRA_simple_fi_multi_mr_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_multi_mr$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_multi_mr_OBJECTS) $(simple_fi_multi_mr_LDADD) $(LIBS)
-simple/poll.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_rdm_atomic$(EXEEXT): $(functional_fi_rdm_atomic_OBJECTS) $(functional_fi_rdm_atomic_DEPENDENCIES) $(EXTRA_functional_fi_rdm_atomic_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_rdm_atomic$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_rdm_atomic_OBJECTS) $(functional_fi_rdm_atomic_LDADD) $(LIBS)
+functional/rdm_deferred_wq.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_poll$(EXEEXT): $(simple_fi_poll_OBJECTS) $(simple_fi_poll_DEPENDENCIES) $(EXTRA_simple_fi_poll_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_poll$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_poll_OBJECTS) $(simple_fi_poll_LDADD) $(LIBS)
-simple/rdm.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_rdm_deferred_wq$(EXEEXT): $(functional_fi_rdm_deferred_wq_OBJECTS) $(functional_fi_rdm_deferred_wq_DEPENDENCIES) $(EXTRA_functional_fi_rdm_deferred_wq_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_rdm_deferred_wq$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_rdm_deferred_wq_OBJECTS) $(functional_fi_rdm_deferred_wq_LDADD) $(LIBS)
+functional/rdm_multi_domain.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_rdm$(EXEEXT): $(simple_fi_rdm_OBJECTS) $(simple_fi_rdm_DEPENDENCIES) $(EXTRA_simple_fi_rdm_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_rdm$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_rdm_OBJECTS) $(simple_fi_rdm_LDADD) $(LIBS)
-simple/rdm_deferred_wq.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_rdm_multi_domain$(EXEEXT): $(functional_fi_rdm_multi_domain_OBJECTS) $(functional_fi_rdm_multi_domain_DEPENDENCIES) $(EXTRA_functional_fi_rdm_multi_domain_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_rdm_multi_domain$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_rdm_multi_domain_OBJECTS) $(functional_fi_rdm_multi_domain_LDADD) $(LIBS)
+functional/rdm_multi_recv.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_rdm_deferred_wq$(EXEEXT): $(simple_fi_rdm_deferred_wq_OBJECTS) $(simple_fi_rdm_deferred_wq_DEPENDENCIES) $(EXTRA_simple_fi_rdm_deferred_wq_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_rdm_deferred_wq$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_rdm_deferred_wq_OBJECTS) $(simple_fi_rdm_deferred_wq_LDADD) $(LIBS)
-simple/rdm_multi_domain.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_rdm_multi_recv$(EXEEXT): $(functional_fi_rdm_multi_recv_OBJECTS) $(functional_fi_rdm_multi_recv_DEPENDENCIES) $(EXTRA_functional_fi_rdm_multi_recv_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_rdm_multi_recv$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_rdm_multi_recv_OBJECTS) $(functional_fi_rdm_multi_recv_LDADD) $(LIBS)
+functional/rdm_rma_simple.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_rdm_multi_domain$(EXEEXT): $(simple_fi_rdm_multi_domain_OBJECTS) $(simple_fi_rdm_multi_domain_DEPENDENCIES) $(EXTRA_simple_fi_rdm_multi_domain_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_rdm_multi_domain$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_rdm_multi_domain_OBJECTS) $(simple_fi_rdm_multi_domain_LDADD) $(LIBS)
-simple/rdm_rma_simple.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_rdm_rma_simple$(EXEEXT): $(functional_fi_rdm_rma_simple_OBJECTS) $(functional_fi_rdm_rma_simple_DEPENDENCIES) $(EXTRA_functional_fi_rdm_rma_simple_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_rdm_rma_simple$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_rdm_rma_simple_OBJECTS) $(functional_fi_rdm_rma_simple_LDADD) $(LIBS)
+functional/rdm_rma_trigger.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_rdm_rma_simple$(EXEEXT): $(simple_fi_rdm_rma_simple_OBJECTS) $(simple_fi_rdm_rma_simple_DEPENDENCIES) $(EXTRA_simple_fi_rdm_rma_simple_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_rdm_rma_simple$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_rdm_rma_simple_OBJECTS) $(simple_fi_rdm_rma_simple_LDADD) $(LIBS)
-simple/rdm_rma_trigger.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_rdm_rma_trigger$(EXEEXT): $(functional_fi_rdm_rma_trigger_OBJECTS) $(functional_fi_rdm_rma_trigger_DEPENDENCIES) $(EXTRA_functional_fi_rdm_rma_trigger_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_rdm_rma_trigger$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_rdm_rma_trigger_OBJECTS) $(functional_fi_rdm_rma_trigger_LDADD) $(LIBS)
+functional/rdm_shared_av.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_rdm_rma_trigger$(EXEEXT): $(simple_fi_rdm_rma_trigger_OBJECTS) $(simple_fi_rdm_rma_trigger_DEPENDENCIES) $(EXTRA_simple_fi_rdm_rma_trigger_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_rdm_rma_trigger$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_rdm_rma_trigger_OBJECTS) $(simple_fi_rdm_rma_trigger_LDADD) $(LIBS)
-simple/rdm_shared_av.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_rdm_shared_av$(EXEEXT): $(functional_fi_rdm_shared_av_OBJECTS) $(functional_fi_rdm_shared_av_DEPENDENCIES) $(EXTRA_functional_fi_rdm_shared_av_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_rdm_shared_av$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_rdm_shared_av_OBJECTS) $(functional_fi_rdm_shared_av_LDADD) $(LIBS)
+functional/rdm_tagged_peek.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_rdm_shared_av$(EXEEXT): $(simple_fi_rdm_shared_av_OBJECTS) $(simple_fi_rdm_shared_av_DEPENDENCIES) $(EXTRA_simple_fi_rdm_shared_av_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_rdm_shared_av$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_rdm_shared_av_OBJECTS) $(simple_fi_rdm_shared_av_LDADD) $(LIBS)
-simple/rdm_tagged_peek.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_rdm_tagged_peek$(EXEEXT): $(functional_fi_rdm_tagged_peek_OBJECTS) $(functional_fi_rdm_tagged_peek_DEPENDENCIES) $(EXTRA_functional_fi_rdm_tagged_peek_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_rdm_tagged_peek$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_rdm_tagged_peek_OBJECTS) $(functional_fi_rdm_tagged_peek_LDADD) $(LIBS)
+functional/recv_cancel.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_rdm_tagged_peek$(EXEEXT): $(simple_fi_rdm_tagged_peek_OBJECTS) $(simple_fi_rdm_tagged_peek_DEPENDENCIES) $(EXTRA_simple_fi_rdm_tagged_peek_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_rdm_tagged_peek$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_rdm_tagged_peek_OBJECTS) $(simple_fi_rdm_tagged_peek_LDADD) $(LIBS)
-simple/recv_cancel.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_recv_cancel$(EXEEXT): $(functional_fi_recv_cancel_OBJECTS) $(functional_fi_recv_cancel_DEPENDENCIES) $(EXTRA_functional_fi_recv_cancel_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_recv_cancel$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_recv_cancel_OBJECTS) $(functional_fi_recv_cancel_LDADD) $(LIBS)
+functional/resmgmt_test.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_recv_cancel$(EXEEXT): $(simple_fi_recv_cancel_OBJECTS) $(simple_fi_recv_cancel_DEPENDENCIES) $(EXTRA_simple_fi_recv_cancel_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_recv_cancel$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_recv_cancel_OBJECTS) $(simple_fi_recv_cancel_LDADD) $(LIBS)
-simple/resource_freeing.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_resmgmt_test$(EXEEXT): $(functional_fi_resmgmt_test_OBJECTS) $(functional_fi_resmgmt_test_DEPENDENCIES) $(EXTRA_functional_fi_resmgmt_test_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_resmgmt_test$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_resmgmt_test_OBJECTS) $(functional_fi_resmgmt_test_LDADD) $(LIBS)
+functional/scalable_ep.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_resource_freeing$(EXEEXT): $(simple_fi_resource_freeing_OBJECTS) $(simple_fi_resource_freeing_DEPENDENCIES) $(EXTRA_simple_fi_resource_freeing_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_resource_freeing$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_resource_freeing_OBJECTS) $(simple_fi_resource_freeing_LDADD) $(LIBS)
-simple/scalable_ep.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_scalable_ep$(EXEEXT): $(functional_fi_scalable_ep_OBJECTS) $(functional_fi_scalable_ep_DEPENDENCIES) $(EXTRA_functional_fi_scalable_ep_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_scalable_ep$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_scalable_ep_OBJECTS) $(functional_fi_scalable_ep_LDADD) $(LIBS)
+functional/shared_ctx.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_scalable_ep$(EXEEXT): $(simple_fi_scalable_ep_OBJECTS) $(simple_fi_scalable_ep_DEPENDENCIES) $(EXTRA_simple_fi_scalable_ep_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_scalable_ep$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_scalable_ep_OBJECTS) $(simple_fi_scalable_ep_LDADD) $(LIBS)
-simple/shared_ctx.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_shared_ctx$(EXEEXT): $(functional_fi_shared_ctx_OBJECTS) $(functional_fi_shared_ctx_DEPENDENCIES) $(EXTRA_functional_fi_shared_ctx_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_shared_ctx$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_shared_ctx_OBJECTS) $(functional_fi_shared_ctx_LDADD) $(LIBS)
+functional/unexpected_msg.$(OBJEXT): functional/$(am__dirstamp) \
+	functional/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_shared_ctx$(EXEEXT): $(simple_fi_shared_ctx_OBJECTS) $(simple_fi_shared_ctx_DEPENDENCIES) $(EXTRA_simple_fi_shared_ctx_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_shared_ctx$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_shared_ctx_OBJECTS) $(simple_fi_shared_ctx_LDADD) $(LIBS)
-simple/unexpected_msg.$(OBJEXT): simple/$(am__dirstamp) \
-	simple/$(DEPDIR)/$(am__dirstamp)
+functional/fi_unexpected_msg$(EXEEXT): $(functional_fi_unexpected_msg_OBJECTS) $(functional_fi_unexpected_msg_DEPENDENCIES) $(EXTRA_functional_fi_unexpected_msg_DEPENDENCIES) functional/$(am__dirstamp)
+	@rm -f functional/fi_unexpected_msg$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(functional_fi_unexpected_msg_OBJECTS) $(functional_fi_unexpected_msg_LDADD) $(LIBS)
+ubertest/$(am__dirstamp):
+	@$(MKDIR_P) ubertest
+	@: > ubertest/$(am__dirstamp)
+ubertest/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) ubertest/$(DEPDIR)
+	@: > ubertest/$(DEPDIR)/$(am__dirstamp)
+ubertest/ofi_atomic.$(OBJEXT): ubertest/$(am__dirstamp) \
+	ubertest/$(DEPDIR)/$(am__dirstamp)
+ubertest/uber.$(OBJEXT): ubertest/$(am__dirstamp) \
+	ubertest/$(DEPDIR)/$(am__dirstamp)
+ubertest/connect.$(OBJEXT): ubertest/$(am__dirstamp) \
+	ubertest/$(DEPDIR)/$(am__dirstamp)
+ubertest/cq.$(OBJEXT): ubertest/$(am__dirstamp) \
+	ubertest/$(DEPDIR)/$(am__dirstamp)
+ubertest/config.$(OBJEXT): ubertest/$(am__dirstamp) \
+	ubertest/$(DEPDIR)/$(am__dirstamp)
+ubertest/domain.$(OBJEXT): ubertest/$(am__dirstamp) \
+	ubertest/$(DEPDIR)/$(am__dirstamp)
+ubertest/ep.$(OBJEXT): ubertest/$(am__dirstamp) \
+	ubertest/$(DEPDIR)/$(am__dirstamp)
+ubertest/xfer.$(OBJEXT): ubertest/$(am__dirstamp) \
+	ubertest/$(DEPDIR)/$(am__dirstamp)
+ubertest/verify.$(OBJEXT): ubertest/$(am__dirstamp) \
+	ubertest/$(DEPDIR)/$(am__dirstamp)
+ubertest/test_ctrl.$(OBJEXT): ubertest/$(am__dirstamp) \
+	ubertest/$(DEPDIR)/$(am__dirstamp)
 
-simple/fi_unexpected_msg$(EXEEXT): $(simple_fi_unexpected_msg_OBJECTS) $(simple_fi_unexpected_msg_DEPENDENCIES) $(EXTRA_simple_fi_unexpected_msg_DEPENDENCIES) simple/$(am__dirstamp)
-	@rm -f simple/fi_unexpected_msg$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(simple_fi_unexpected_msg_OBJECTS) $(simple_fi_unexpected_msg_LDADD) $(LIBS)
-streaming/$(am__dirstamp):
-	@$(MKDIR_P) streaming
-	@: > streaming/$(am__dirstamp)
-streaming/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) streaming/$(DEPDIR)
-	@: > streaming/$(DEPDIR)/$(am__dirstamp)
-streaming/msg_rma.$(OBJEXT): streaming/$(am__dirstamp) \
-	streaming/$(DEPDIR)/$(am__dirstamp)
-
-streaming/fi_msg_rma$(EXEEXT): $(streaming_fi_msg_rma_OBJECTS) $(streaming_fi_msg_rma_DEPENDENCIES) $(EXTRA_streaming_fi_msg_rma_DEPENDENCIES) streaming/$(am__dirstamp)
-	@rm -f streaming/fi_msg_rma$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(streaming_fi_msg_rma_OBJECTS) $(streaming_fi_msg_rma_LDADD) $(LIBS)
-streaming/msg.$(OBJEXT): streaming/$(am__dirstamp) \
-	streaming/$(DEPDIR)/$(am__dirstamp)
-
-streaming/fi_msg_stream$(EXEEXT): $(streaming_fi_msg_stream_OBJECTS) $(streaming_fi_msg_stream_DEPENDENCIES) $(EXTRA_streaming_fi_msg_stream_DEPENDENCIES) streaming/$(am__dirstamp)
-	@rm -f streaming/fi_msg_stream$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(streaming_fi_msg_stream_OBJECTS) $(streaming_fi_msg_stream_LDADD) $(LIBS)
-streaming/rdm_atomic.$(OBJEXT): streaming/$(am__dirstamp) \
-	streaming/$(DEPDIR)/$(am__dirstamp)
-
-streaming/fi_rdm_atomic$(EXEEXT): $(streaming_fi_rdm_atomic_OBJECTS) $(streaming_fi_rdm_atomic_DEPENDENCIES) $(EXTRA_streaming_fi_rdm_atomic_DEPENDENCIES) streaming/$(am__dirstamp)
-	@rm -f streaming/fi_rdm_atomic$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(streaming_fi_rdm_atomic_OBJECTS) $(streaming_fi_rdm_atomic_LDADD) $(LIBS)
-streaming/rdm_multi_recv.$(OBJEXT): streaming/$(am__dirstamp) \
-	streaming/$(DEPDIR)/$(am__dirstamp)
-
-streaming/fi_rdm_multi_recv$(EXEEXT): $(streaming_fi_rdm_multi_recv_OBJECTS) $(streaming_fi_rdm_multi_recv_DEPENDENCIES) $(EXTRA_streaming_fi_rdm_multi_recv_DEPENDENCIES) streaming/$(am__dirstamp)
-	@rm -f streaming/fi_rdm_multi_recv$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(streaming_fi_rdm_multi_recv_OBJECTS) $(streaming_fi_rdm_multi_recv_LDADD) $(LIBS)
-streaming/rdm_rma.$(OBJEXT): streaming/$(am__dirstamp) \
-	streaming/$(DEPDIR)/$(am__dirstamp)
-
-streaming/fi_rdm_rma$(EXEEXT): $(streaming_fi_rdm_rma_OBJECTS) $(streaming_fi_rdm_rma_DEPENDENCIES) $(EXTRA_streaming_fi_rdm_rma_DEPENDENCIES) streaming/$(am__dirstamp)
-	@rm -f streaming/fi_rdm_rma$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(streaming_fi_rdm_rma_OBJECTS) $(streaming_fi_rdm_rma_LDADD) $(LIBS)
-streaming/resmgmt_test.$(OBJEXT): streaming/$(am__dirstamp) \
-	streaming/$(DEPDIR)/$(am__dirstamp)
-
-streaming/fi_resmgmt_test$(EXEEXT): $(streaming_fi_resmgmt_test_OBJECTS) $(streaming_fi_resmgmt_test_DEPENDENCIES) $(EXTRA_streaming_fi_resmgmt_test_DEPENDENCIES) streaming/$(am__dirstamp)
-	@rm -f streaming/fi_resmgmt_test$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(streaming_fi_resmgmt_test_OBJECTS) $(streaming_fi_resmgmt_test_LDADD) $(LIBS)
+ubertest/fi_ubertest$(EXEEXT): $(ubertest_fi_ubertest_OBJECTS) $(ubertest_fi_ubertest_DEPENDENCIES) $(EXTRA_ubertest_fi_ubertest_DEPENDENCIES) ubertest/$(am__dirstamp)
+	@rm -f ubertest/fi_ubertest$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(ubertest_fi_ubertest_OBJECTS) $(ubertest_fi_ubertest_LDADD) $(LIBS)
 unit/$(am__dirstamp):
 	@$(MKDIR_P) unit
 	@: > unit/$(am__dirstamp)
@@ -1439,6 +1414,12 @@ unit/mr_test.$(OBJEXT): unit/$(am__dirstamp) \
 unit/fi_mr_test$(EXEEXT): $(unit_fi_mr_test_OBJECTS) $(unit_fi_mr_test_DEPENDENCIES) $(EXTRA_unit_fi_mr_test_DEPENDENCIES) unit/$(am__dirstamp)
 	@rm -f unit/fi_mr_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(unit_fi_mr_test_OBJECTS) $(unit_fi_mr_test_LDADD) $(LIBS)
+unit/resource_freeing.$(OBJEXT): unit/$(am__dirstamp) \
+	unit/$(DEPDIR)/$(am__dirstamp)
+
+unit/fi_resource_freeing$(EXEEXT): $(unit_fi_resource_freeing_OBJECTS) $(unit_fi_resource_freeing_DEPENDENCIES) $(EXTRA_unit_fi_resource_freeing_DEPENDENCIES) unit/$(am__dirstamp)
+	@rm -f unit/fi_resource_freeing$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(unit_fi_resource_freeing_OBJECTS) $(unit_fi_resource_freeing_LDADD) $(LIBS)
 install-dist_binSCRIPTS: $(dist_bin_SCRIPTS)
 	@$(NORMAL_INSTALL)
 	@list='$(dist_bin_SCRIPTS)'; test -n "$(bindir)" || list=; \
@@ -1482,11 +1463,8 @@ mostlyclean-compile:
 	-rm -f common/*.lo
 	-rm -f common/osx/*.$(OBJEXT)
 	-rm -f common/osx/*.lo
-	-rm -f complex/*.$(OBJEXT)
-	-rm -f ported/libibverbs/*.$(OBJEXT)
-	-rm -f ported/librdmacm/*.$(OBJEXT)
-	-rm -f simple/*.$(OBJEXT)
-	-rm -f streaming/*.$(OBJEXT)
+	-rm -f functional/*.$(OBJEXT)
+	-rm -f ubertest/*.$(OBJEXT)
 	-rm -f unit/*.$(OBJEXT)
 
 distclean-compile:
@@ -1504,49 +1482,43 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@common/$(DEPDIR)/jsmn.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@common/$(DEPDIR)/shared.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@common/osx/$(DEPDIR)/osd.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@complex/$(DEPDIR)/ft_comm.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@complex/$(DEPDIR)/ft_comp.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@complex/$(DEPDIR)/ft_config.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@complex/$(DEPDIR)/ft_domain.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@complex/$(DEPDIR)/ft_endpoint.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@complex/$(DEPDIR)/ft_main.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@complex/$(DEPDIR)/ft_msg.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@complex/$(DEPDIR)/ft_test.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@complex/$(DEPDIR)/ft_verify.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@complex/$(DEPDIR)/ofi_atomic.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@ported/libibverbs/$(DEPDIR)/rc_pingpong.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@ported/librdmacm/$(DEPDIR)/cmatose.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/av_xfer.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/cm_data.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/cq_data.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/dgram.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/dgram_waitset.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/inj_complete.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/mcast.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/msg.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/msg_epoll.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/msg_sockets.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/multi_ep.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/multi_mr.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/poll.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/rdm.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/rdm_deferred_wq.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/rdm_multi_domain.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/rdm_rma_simple.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/rdm_rma_trigger.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/rdm_shared_av.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/rdm_tagged_peek.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/recv_cancel.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/resource_freeing.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/scalable_ep.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/shared_ctx.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/unexpected_msg.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@streaming/$(DEPDIR)/msg.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@streaming/$(DEPDIR)/msg_rma.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@streaming/$(DEPDIR)/rdm_atomic.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@streaming/$(DEPDIR)/rdm_multi_recv.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@streaming/$(DEPDIR)/rdm_rma.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@streaming/$(DEPDIR)/resmgmt_test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/av_xfer.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/cm_data.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/cq_data.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/dgram.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/dgram_waitset.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/inj_complete.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/mcast.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/msg.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/msg_epoll.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/msg_sockets.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/multi_ep.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/multi_mr.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/poll.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/rdm.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/rdm_atomic.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/rdm_deferred_wq.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/rdm_multi_domain.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/rdm_multi_recv.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/rdm_rma_simple.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/rdm_rma_trigger.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/rdm_shared_av.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/rdm_tagged_peek.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/recv_cancel.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/resmgmt_test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/scalable_ep.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/shared_ctx.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@functional/$(DEPDIR)/unexpected_msg.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@ubertest/$(DEPDIR)/config.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@ubertest/$(DEPDIR)/connect.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@ubertest/$(DEPDIR)/cq.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@ubertest/$(DEPDIR)/domain.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@ubertest/$(DEPDIR)/ep.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@ubertest/$(DEPDIR)/ofi_atomic.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@ubertest/$(DEPDIR)/test_ctrl.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@ubertest/$(DEPDIR)/uber.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@ubertest/$(DEPDIR)/verify.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@ubertest/$(DEPDIR)/xfer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/av_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/cntr_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/common.Po@am__quote@
@@ -1555,6 +1527,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/eq_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/getinfo_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/mr_test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/resource_freeing.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -1588,15 +1561,55 @@ clean-libtool:
 	-rm -rf benchmarks/.libs benchmarks/_libs
 	-rm -rf common/.libs common/_libs
 	-rm -rf common/osx/.libs common/osx/_libs
-	-rm -rf complex/.libs complex/_libs
-	-rm -rf ported/libibverbs/.libs ported/libibverbs/_libs
-	-rm -rf ported/librdmacm/.libs ported/librdmacm/_libs
-	-rm -rf simple/.libs simple/_libs
-	-rm -rf streaming/.libs streaming/_libs
+	-rm -rf functional/.libs functional/_libs
+	-rm -rf ubertest/.libs ubertest/_libs
 	-rm -rf unit/.libs unit/_libs
 
 distclean-libtool:
 	-rm -f libtool config.lt
+install-man1: $(man_MANS)
+	@$(NORMAL_INSTALL)
+	@list1=''; \
+	list2='$(man_MANS)'; \
+	test -n "$(man1dir)" \
+	  && test -n "`echo $$list1$$list2`" \
+	  || exit 0; \
+	echo " $(MKDIR_P) '$(DESTDIR)$(man1dir)'"; \
+	$(MKDIR_P) "$(DESTDIR)$(man1dir)" || exit 1; \
+	{ for i in $$list1; do echo "$$i"; done;  \
+	if test -n "$$list2"; then \
+	  for i in $$list2; do echo "$$i"; done \
+	    | sed -n '/\.1[a-z]*$$/p'; \
+	fi; \
+	} | while read p; do \
+	  if test -f $$p; then d=; else d="$(srcdir)/"; fi; \
+	  echo "$$d$$p"; echo "$$p"; \
+	done | \
+	sed -e 'n;s,.*/,,;p;h;s,.*\.,,;s,^[^1][0-9a-z]*$$,1,;x' \
+	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,' | \
+	sed 'N;N;s,\n, ,g' | { \
+	list=; while read file base inst; do \
+	  if test "$$base" = "$$inst"; then list="$$list $$file"; else \
+	    echo " $(INSTALL_DATA) '$$file' '$(DESTDIR)$(man1dir)/$$inst'"; \
+	    $(INSTALL_DATA) "$$file" "$(DESTDIR)$(man1dir)/$$inst" || exit $$?; \
+	  fi; \
+	done; \
+	for i in $$list; do echo "$$i"; done | $(am__base_list) | \
+	while read files; do \
+	  test -z "$$files" || { \
+	    echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(man1dir)'"; \
+	    $(INSTALL_DATA) $$files "$(DESTDIR)$(man1dir)" || exit $$?; }; \
+	done; }
+
+uninstall-man1:
+	@$(NORMAL_UNINSTALL)
+	@list=''; test -n "$(man1dir)" || exit 0; \
+	files=`{ for i in $$list; do echo "$$i"; done; \
+	l2='$(man_MANS)'; for i in $$l2; do echo "$$i"; done | \
+	  sed -n '/\.1[a-z]*$$/p'; \
+	} | sed -e 's,.*/,,;h;s,.*\.,,;s,^[^1][0-9a-z]*$$,1,;x' \
+	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,'`; \
+	dir='$(DESTDIR)$(man1dir)'; $(am__uninstall_files_from_dir)
 install-man7: $(man_MANS)
 	@$(NORMAL_INSTALL)
 	@list1=''; \
@@ -1894,7 +1907,7 @@ check: check-am
 all-am: Makefile $(LTLIBRARIES) $(PROGRAMS) $(SCRIPTS) $(MANS) $(DATA) \
 		config.h
 installdirs:
-	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(man7dir)" "$(DESTDIR)$(configdir)"; do \
+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man7dir)" "$(DESTDIR)$(configdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-am
@@ -1929,16 +1942,10 @@ distclean-generic:
 	-rm -f common/$(am__dirstamp)
 	-rm -f common/osx/$(DEPDIR)/$(am__dirstamp)
 	-rm -f common/osx/$(am__dirstamp)
-	-rm -f complex/$(DEPDIR)/$(am__dirstamp)
-	-rm -f complex/$(am__dirstamp)
-	-rm -f ported/libibverbs/$(DEPDIR)/$(am__dirstamp)
-	-rm -f ported/libibverbs/$(am__dirstamp)
-	-rm -f ported/librdmacm/$(DEPDIR)/$(am__dirstamp)
-	-rm -f ported/librdmacm/$(am__dirstamp)
-	-rm -f simple/$(DEPDIR)/$(am__dirstamp)
-	-rm -f simple/$(am__dirstamp)
-	-rm -f streaming/$(DEPDIR)/$(am__dirstamp)
-	-rm -f streaming/$(am__dirstamp)
+	-rm -f functional/$(DEPDIR)/$(am__dirstamp)
+	-rm -f functional/$(am__dirstamp)
+	-rm -f ubertest/$(DEPDIR)/$(am__dirstamp)
+	-rm -f ubertest/$(am__dirstamp)
 	-rm -f unit/$(DEPDIR)/$(am__dirstamp)
 	-rm -f unit/$(am__dirstamp)
 
@@ -1952,7 +1959,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-libtool \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf benchmarks/$(DEPDIR) common/$(DEPDIR) common/osx/$(DEPDIR) complex/$(DEPDIR) ported/libibverbs/$(DEPDIR) ported/librdmacm/$(DEPDIR) simple/$(DEPDIR) streaming/$(DEPDIR) unit/$(DEPDIR)
+	-rm -rf benchmarks/$(DEPDIR) common/$(DEPDIR) common/osx/$(DEPDIR) functional/$(DEPDIR) ubertest/$(DEPDIR) unit/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-libtool distclean-tags
@@ -1985,7 +1992,7 @@ install-info: install-info-am
 
 install-info-am:
 
-install-man: install-man7
+install-man: install-man1 install-man7
 
 install-pdf: install-pdf-am
 
@@ -2000,7 +2007,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf benchmarks/$(DEPDIR) common/$(DEPDIR) common/osx/$(DEPDIR) complex/$(DEPDIR) ported/libibverbs/$(DEPDIR) ported/librdmacm/$(DEPDIR) simple/$(DEPDIR) streaming/$(DEPDIR) unit/$(DEPDIR)
+	-rm -rf benchmarks/$(DEPDIR) common/$(DEPDIR) common/osx/$(DEPDIR) functional/$(DEPDIR) ubertest/$(DEPDIR) unit/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -2020,7 +2027,7 @@ ps-am:
 uninstall-am: uninstall-binPROGRAMS uninstall-dist_binSCRIPTS \
 	uninstall-man uninstall-nobase_dist_configDATA
 
-uninstall-man: uninstall-man7
+uninstall-man: uninstall-man1 uninstall-man7
 
 .MAKE: all install-am install-strip
 
@@ -2036,17 +2043,23 @@ uninstall-man: uninstall-man7
 	install-data-am install-dist_binSCRIPTS install-dvi \
 	install-dvi-am install-exec install-exec-am install-html \
 	install-html-am install-info install-info-am install-man \
-	install-man7 install-nobase_dist_configDATA install-pdf \
-	install-pdf-am install-ps install-ps-am install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-compile \
-	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	tags tags-am uninstall uninstall-am uninstall-binPROGRAMS \
-	uninstall-dist_binSCRIPTS uninstall-man uninstall-man7 \
-	uninstall-nobase_dist_configDATA
+	install-man1 install-man7 install-nobase_dist_configDATA \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-strip installcheck installcheck-am installdirs \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
+	pdf pdf-am ps ps-am tags tags-am uninstall uninstall-am \
+	uninstall-binPROGRAMS uninstall-dist_binSCRIPTS uninstall-man \
+	uninstall-man1 uninstall-man7 uninstall-nobase_dist_configDATA
 
 .PRECIOUS: Makefile
 
+
+nroff:
+	@for file in $(real_man_pages); do \
+            source=`echo $$file | sed -e 's@/man[0-9]@@'`; \
+            perl $(top_srcdir)/config/md2nroff.pl --source=$(top_srcdir)/$$source.md; \
+        done
 
 dist-hook: fabtests.spec
 	cp fabtests.spec $(distdir)
@@ -2054,6 +2067,8 @@ dist-hook: fabtests.spec
 test:
 	./scripts/runfabtests.sh -vvv -S $(os_excludes)
 	./scripts/runfabtests.sh -vvv -S $(os_excludes) -R -f ./test_configs/udp/udp.exclude udp
+	./scripts/runfabtests.sh -vvv -S $(os_excludes) -R -f ./test_configs/tcp/tcp.exclude tcp
+	./scripts/runfabtests.sh -vvv -S $(os_excludes) -R -f ./test_configs/ofi_rxd/ofi_rxd.exclude "UDP;ofi_rxd"
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

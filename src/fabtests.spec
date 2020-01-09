@@ -1,5 +1,5 @@
 Name: fabtests
-Version: 1.6.1
+Version: 1.7.0
 Release: 1%{?dist}
 Summary: Test suite for libfabric API
 Group: System Environment/Libraries
@@ -32,6 +32,7 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 %{_bindir}/*
 %{_mandir}/man7/*
+%{_mandir}/man1/*
 %{_datadir}/%{name}/test_configs/*
 %doc AUTHORS COPYING README
 

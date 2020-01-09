@@ -9,7 +9,7 @@ index feb6463..2d3b3a3 100755
  # Copyright (c) 2015 Cisco Systems, Inc.  All rights reserved.
  #
 diff --git a/scripts/runfabtests.sh b/scripts/runfabtests.sh
-index b57a039..9b3f0e7 100755
+index 813fa53..d084702 100755
 --- a/scripts/runfabtests.sh
 +++ b/scripts/runfabtests.sh
 @@ -1,4 +1,4 @@
@@ -17,4 +17,4 @@ index b57a039..9b3f0e7 100755
 +#!/bin/bash
  
  #
- # Copyright (c) 2017, Intel Corporation.  All rights reserved.
+ # Copyright (c) 2017-2018, Intel Corporation.  All rights reserved.
