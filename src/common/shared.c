@@ -82,6 +82,7 @@ char *buf, *tx_buf, *rx_buf;
 size_t buf_size, tx_size, rx_size;
 int rx_fd = -1, tx_fd = -1;
 char default_port[8] = "9228";
+static char default_oob_port[8] = "3000";
 const char *greeting = "Hello from Client!";
 
 
@@ -91,6 +92,7 @@ struct timespec start, end;
 
 int listen_sock = -1;
 int sock = -1;
+int oob_sock = -1;
 
 struct fi_av_attr av_attr = {
 	.type = FI_AV_MAP,
@@ -455,34 +457,66 @@ int ft_alloc_ep_res(struct fi_info *fi)
 			cq_attr.format = FI_CQ_FORMAT_CONTEXT;
 	}
 
-	ft_cq_set_wait_attr();
-	cq_attr.size = fi->tx_attr->size;
-	ret = fi_cq_open(domain, &cq_attr, &txcq, &txcq);
-	if (ret) {
-		FT_PRINTERR("fi_cq_open", ret);
-		return ret;
+	if (opts.options & FT_OPT_CQ_SHARED) {
+		ft_cq_set_wait_attr();
+		cq_attr.size = 0;
+
+		if (opts.tx_cq_size)
+			cq_attr.size += opts.tx_cq_size;
+		else
+			cq_attr.size += fi->tx_attr->size;
+
+		if (opts.rx_cq_size)
+			cq_attr.size += opts.rx_cq_size;
+		else
+			cq_attr.size += fi->rx_attr->size;
+
+		ret = fi_cq_open(domain, &cq_attr, &txcq, &txcq);
+		if (ret) {
+			FT_PRINTERR("fi_cq_open", ret);
+			return ret;
+		}
+		rxcq = txcq;
+	}
+
+	if (!(opts.options & FT_OPT_CQ_SHARED)) {
+		ft_cq_set_wait_attr();
+		if (opts.tx_cq_size)
+			cq_attr.size = opts.tx_cq_size;
+		else
+			cq_attr.size = fi->tx_attr->size;
+
+		ret = fi_cq_open(domain, &cq_attr, &txcq, &txcq);
+		if (ret) {
+			FT_PRINTERR("fi_cq_open", ret);
+			return ret;
+		}
 	}
 
 	if (opts.options & FT_OPT_TX_CNTR) {
-		ft_cntr_set_wait_attr();
-		ret = fi_cntr_open(domain, &cntr_attr, &txcntr, &txcntr);
+		ret = ft_cntr_open(&txcntr);
 		if (ret) {
 			FT_PRINTERR("fi_cntr_open", ret);
 			return ret;
 		}
 	}
 
-	ft_cq_set_wait_attr();
-	cq_attr.size = fi->rx_attr->size;
-	ret = fi_cq_open(domain, &cq_attr, &rxcq, &rxcq);
-	if (ret) {
-		FT_PRINTERR("fi_cq_open", ret);
-		return ret;
+	if (!(opts.options & FT_OPT_CQ_SHARED)) {
+		ft_cq_set_wait_attr();
+		if (opts.rx_cq_size)
+			cq_attr.size = opts.rx_cq_size;
+		else
+			cq_attr.size = fi->rx_attr->size;
+
+		ret = fi_cq_open(domain, &cq_attr, &rxcq, &rxcq);
+		if (ret) {
+			FT_PRINTERR("fi_cq_open", ret);
+			return ret;
+		}
 	}
 
 	if (opts.options & FT_OPT_RX_CNTR) {
-		ft_cntr_set_wait_attr();
-		ret = fi_cntr_open(domain, &cntr_attr, &rxcntr, &rxcntr);
+		ret = ft_cntr_open(&rxcntr);
 		if (ret) {
 			FT_PRINTERR("fi_cntr_open", ret);
 			return ret;
@@ -520,6 +554,74 @@ int ft_alloc_active_res(struct fi_info *fi)
 	}
 
 	return 0;
+}
+
+static void ft_init(void)
+{
+	tx_seq = 0;
+	rx_seq = 0;
+	tx_cq_cntr = 0;
+	rx_cq_cntr = 0;
+}
+
+static int ft_init_oob(void)
+{
+	int ret, op, err;
+	struct addrinfo *ai = NULL;
+
+	if (!(opts.options & FT_OPT_OOB_SYNC) || oob_sock != -1)
+		return 0;
+
+	if (!opts.oob_port)
+		opts.oob_port = default_oob_port;
+
+	if (!opts.dst_addr) {
+		ret = ft_sock_listen(opts.oob_port);
+		if (ret)
+			return ret;
+
+		oob_sock = accept(listen_sock, NULL, 0);
+		if (oob_sock < 0) {
+			perror("accept");
+			ret = oob_sock;
+			return ret;
+		}
+
+		close(listen_sock);
+	} else {
+
+		ret = getaddrinfo(opts.dst_addr, opts.oob_port, NULL, &ai);
+		if (ret) {
+			perror("getaddrinfo");
+			return ret;
+		}
+
+		oob_sock = socket(ai->ai_family, SOCK_STREAM, 0);
+		if (oob_sock < 0) {
+			perror("socket");
+			ret = oob_sock;
+			goto free;
+		}
+
+		ret = connect(oob_sock, ai->ai_addr, ai->ai_addrlen);
+		if (ret) {
+			perror("connect");
+			close(oob_sock);
+			goto free;
+		}
+		sleep(1);
+	}
+
+	op = 1;
+	err = setsockopt(oob_sock, IPPROTO_TCP, TCP_NODELAY,
+			 &op, sizeof(op));
+	if (err)
+		perror("setsockopt"); /* non-fatal error */
+
+free:
+	if (ai)
+		freeaddrinfo(ai);
+	return ret;
 }
 
 int ft_getinfo(struct fi_info *hints, struct fi_info **info)
@@ -566,6 +668,11 @@ int ft_init_fabric_cm(void)
 int ft_start_server(void)
 {
 	int ret;
+
+	ft_init();
+	ret = ft_init_oob();
+	if (ret)
+		return ret;
 
 	ret = ft_getinfo(hints, &fi_pep);
 	if (ret)
@@ -723,6 +830,11 @@ int ft_client_connect(void)
 {
 	int ret;
 
+	ft_init();
+	ret = ft_init_oob();
+	if (ret)
+		return ret;
+
 	ret = ft_getinfo(hints, &fi);
 	if (ret)
 		return ret;
@@ -749,6 +861,11 @@ int ft_client_connect(void)
 int ft_init_fabric(void)
 {
 	int ret;
+
+	ft_init();
+	ret = ft_init_oob();
+	if (ret)
+		return ret;
 
 	ret = ft_getinfo(hints, &fi);
 	if (ret)
@@ -860,7 +977,8 @@ int ft_setup_ep(struct fid_ep *ep, struct fid_eq *eq,
 		return ret;
 	}
 
-	if (fi->rx_attr->op_flags != FI_MULTI_RECV && post_initial_recv) {
+	if (fi->rx_attr->op_flags != FI_MULTI_RECV && post_initial_recv
+		&& (fi->caps & (FI_MSG | FI_TAGGED))) {
 		/* Initial receive will get remote address for unconnected EPs */
 		ret = ft_post_rx(ep, MAX(rx_size, FT_MAX_CTRL_MSG), &rx_ctx);
 		if (ret)
@@ -923,12 +1041,49 @@ int ft_init_av(void)
 	return ft_init_av_dst_addr(av, ep, &remote_fi_addr);
 }
 
+int ft_exchange_addresses_oob(struct fid_av *av_ptr, struct fid_ep *ep_ptr,
+		fi_addr_t *remote_addr)
+{
+	int ret;
+	size_t addrlen = FT_MAX_CTRL_MSG;
+
+	ret = fi_getname(&ep_ptr->fid, (char *) tx_buf + ft_tx_prefix_size(),
+			 &addrlen);
+	if (ret) {
+		FT_PRINTERR("fi_getname", ret);
+		return ret;
+	}
+
+	ret = ft_sock_send(oob_sock, (char *) tx_buf + ft_tx_prefix_size(),  FT_MAX_CTRL_MSG);
+	if (ret)
+		return ret;
+
+	ret = ft_sock_recv(oob_sock, (char *) rx_buf + ft_rx_prefix_size(), FT_MAX_CTRL_MSG);
+	if (ret)
+		return ret;
+
+	ret = ft_av_insert(av_ptr, (char *) rx_buf + ft_rx_prefix_size(),
+			1, remote_addr, 0, NULL);
+	if (ret)
+		return ret;	
+
+	return 0;
+}
+
 /* TODO: retry send for unreliable endpoints */
 int ft_init_av_dst_addr(struct fid_av *av_ptr, struct fid_ep *ep_ptr,
 		fi_addr_t *remote_addr)
 {
 	size_t addrlen;
 	int ret;
+
+	if (opts.oob_port) {
+		ret = ft_exchange_addresses_oob(av_ptr, ep_ptr, remote_addr);
+		if (ret)
+			return ret;
+		else
+			goto set_rx_seq_close;
+	}
 
 	if (opts.dst_addr) {
 		ret = ft_av_insert(av_ptr, fi->dest_addr, 1, remote_addr, 0, NULL);
@@ -965,6 +1120,17 @@ int ft_init_av_dst_addr(struct fid_av *av_ptr, struct fid_ep *ep_ptr,
 			return ret;
 	}
 
+set_rx_seq_close:
+	/*
+	* For a test which does not have MSG or TAGGED
+	* capabilities, but has RMA/Atomics and uses the OOB sync.
+	* If no recv is going to be posted,
+	* then the rx_seq needs to be incremented to wait on the first RMA/Atomic
+	* completion.
+	*/
+	if (!(fi->caps & FI_MSG) && !(fi->caps & FI_TAGGED) && opts.oob_port)
+		rx_seq++;
+
 	return 0;
 }
 
@@ -974,6 +1140,9 @@ int ft_init_av_addr(struct fid_av *av_ptr, struct fid_ep *ep_ptr,
 {
 	size_t addrlen;
 	int ret;
+
+	if (opts.oob_port)
+		return ft_exchange_addresses_oob(av_ptr, ep_ptr, remote_addr);
 
 	if (opts.dst_addr) {
 		addrlen = FT_MAX_CTRL_MSG;
@@ -1082,8 +1251,12 @@ static void ft_close_fids(void)
 	FT_CLOSE_FID(ep);
 	FT_CLOSE_FID(pep);
 	FT_CLOSE_FID(pollset);
-	FT_CLOSE_FID(rxcq);
-	FT_CLOSE_FID(txcq);
+	if (opts.options & FT_OPT_CQ_SHARED) {
+		FT_CLOSE_FID(txcq);
+	} else {
+		FT_CLOSE_FID(rxcq);
+		FT_CLOSE_FID(txcq);
+	}
 	FT_CLOSE_FID(rxcntr);
 	FT_CLOSE_FID(txcntr);
 	FT_CLOSE_FID(av);
@@ -1365,19 +1538,40 @@ static int ft_inject_progress(uint64_t total)
 		seq++;								\
 	} while (0)
 
-ssize_t ft_post_tx(struct fid_ep *ep, fi_addr_t fi_addr, size_t size, struct fi_context* ctx)
+ssize_t ft_post_tx_buf(struct fid_ep *ep, fi_addr_t fi_addr, size_t size,
+		       uint64_t data, struct fi_context* ctx,
+		       void *op_buf, void *op_mr_desc, uint64_t op_tag)
 {
-
+	size += ft_tx_prefix_size();
 	if (hints->caps & FI_TAGGED) {
-		FT_POST(fi_tsend, ft_get_tx_comp, tx_seq, "transmit", ep,
-				tx_buf, size + ft_tx_prefix_size(), mr_desc,
-				fi_addr, ft_tag ? ft_tag : tx_seq, ctx);
+		op_tag = op_tag ? op_tag : tx_seq;
+		if (data != NO_CQ_DATA) {
+			FT_POST(fi_tsenddata, ft_get_tx_comp, tx_seq, "transmit", ep,
+				op_buf, size, op_mr_desc,
+				data, fi_addr, op_tag, ctx);
+		} else {
+			FT_POST(fi_tsend, ft_get_tx_comp, tx_seq, "transmit", ep,
+				op_buf, size, op_mr_desc,
+				fi_addr, op_tag, ctx);
+		}
 	} else {
-		FT_POST(fi_send, ft_get_tx_comp, tx_seq, "transmit", ep,
-				tx_buf,	size + ft_tx_prefix_size(), mr_desc,
-				fi_addr, ctx);
+		if (data != NO_CQ_DATA) {
+			FT_POST(fi_senddata, ft_get_tx_comp, tx_seq, "transmit", ep,
+				op_buf,	size, op_mr_desc, data, fi_addr, ctx);
+
+		} else {
+			FT_POST(fi_send, ft_get_tx_comp, tx_seq, "transmit", ep,
+				op_buf,	size, op_mr_desc, fi_addr, ctx);
+		}
 	}
 	return 0;
+}
+
+ssize_t ft_post_tx(struct fid_ep *ep, fi_addr_t fi_addr, size_t size,
+		   uint64_t data, struct fi_context* ctx)
+{
+	return ft_post_tx_buf(ep, fi_addr, size, data,
+			      ctx, tx_buf, mr_desc, ft_tag);
 }
 
 ssize_t ft_tx(struct fid_ep *ep, fi_addr_t fi_addr, size_t size, struct fi_context *ctx)
@@ -1387,7 +1581,7 @@ ssize_t ft_tx(struct fid_ep *ep, fi_addr_t fi_addr, size_t size, struct fi_conte
 	if (ft_check_opts(FT_OPT_VERIFY_DATA | FT_OPT_ACTIVE))
 		ft_fill_buf((char *) tx_buf + ft_tx_prefix_size(), size);
 
-	ret = ft_post_tx(ep, fi_addr, size, ctx);
+	ret = ft_post_tx(ep, fi_addr, size, NO_CQ_DATA, ctx);
 	if (ret)
 		return ret;
 
@@ -1506,6 +1700,39 @@ ssize_t ft_post_rma_inject(enum ft_rma_opcodes op, struct fid_ep *ep, size_t siz
 	return 0;
 }
 
+ssize_t ft_post_atomic(enum ft_atomic_opcodes opcode, struct fid_ep *ep,
+		       void *compare, void *compare_desc, void *result,
+		       void *result_desc, struct fi_rma_iov *remote,
+		       enum fi_datatype datatype, enum fi_op atomic_op,
+		       void *context)
+{
+	size_t count = opts.transfer_size / datatype_to_size(datatype);
+	switch (opcode) {
+	case FT_ATOMIC_BASE:
+		FT_POST(fi_atomic, ft_get_tx_comp, tx_seq, "fi_atomic", ep,
+			buf, count, mr_desc, remote_fi_addr, remote->addr,
+			remote->key, datatype, atomic_op, context);
+		break;
+	case FT_ATOMIC_FETCH:
+		FT_POST(fi_fetch_atomic, ft_get_tx_comp, tx_seq,
+			"fi_fetch_atomic", ep, buf, count, mr_desc, result,
+			result_desc, remote_fi_addr, remote->addr, remote->key,
+			datatype, atomic_op, context);
+		break;
+	case FT_ATOMIC_COMPARE:
+		FT_POST(fi_compare_atomic, ft_get_tx_comp, tx_seq,
+			"fi_compare_atomic", ep, buf, count, mr_desc, compare,
+			compare_desc, result, result_desc, remote_fi_addr,
+			remote->addr, remote->key, datatype, atomic_op, context);
+		break;
+	default:
+		FT_ERR("Unknown atomic opcode\n");
+		return EXIT_FAILURE;
+	}
+
+	return 0;
+}
+
 static int check_atomic_attr(enum fi_op op, enum fi_datatype datatype,
 			     uint64_t flags)
 {
@@ -1562,18 +1789,24 @@ int check_compare_atomic_op(struct fid_ep *endpoint, enum fi_op op,
 	return check_atomic_attr(op, datatype, FI_COMPARE_ATOMIC);
 }
 
-ssize_t ft_post_rx(struct fid_ep *ep, size_t size, struct fi_context* ctx)
+ssize_t ft_post_rx_buf(struct fid_ep *ep, size_t size, struct fi_context* ctx,
+		       void *op_buf, void *op_mr_desc, uint64_t op_tag)
 {
+	size = MAX(size, FT_MAX_CTRL_MSG) + ft_rx_prefix_size();
 	if (hints->caps & FI_TAGGED) {
-		FT_POST(fi_trecv, ft_get_rx_comp, rx_seq, "receive", ep, rx_buf,
-				MAX(size, FT_MAX_CTRL_MSG) + ft_rx_prefix_size(),
-				mr_desc, 0, ft_tag ? ft_tag : rx_seq, 0, ctx);
+		op_tag = op_tag ? op_tag : rx_seq;
+		FT_POST(fi_trecv, ft_get_rx_comp, rx_seq, "receive", ep,
+			op_buf, size, op_mr_desc, 0, op_tag, 0, ctx);
 	} else {
-		FT_POST(fi_recv, ft_get_rx_comp, rx_seq, "receive", ep, rx_buf,
-				MAX(size, FT_MAX_CTRL_MSG) + ft_rx_prefix_size(),
-				mr_desc, 0, ctx);
+		FT_POST(fi_recv, ft_get_rx_comp, rx_seq, "receive", ep,
+			op_buf,	size, op_mr_desc, 0, ctx);
 	}
 	return 0;
+}
+
+ssize_t ft_post_rx(struct fid_ep *ep, size_t size, struct fi_context* ctx)
+{
+	return ft_post_rx_buf(ep, size, ctx, rx_buf, mr_desc, ft_tag);
 }
 
 ssize_t ft_rx(struct fid_ep *ep, size_t size)
@@ -1621,7 +1854,7 @@ static int ft_spin_for_comp(struct fid_cq *cq, uint64_t *cur,
 	if (timeout >= 0)
 		clock_gettime(CLOCK_MONOTONIC, &a);
 
-	while (total - *cur > 0) {
+	do {
 		ret = fi_cq_read(cq, &comp, 1);
 		if (ret > 0) {
 			if (timeout >= 0)
@@ -1638,7 +1871,7 @@ static int ft_spin_for_comp(struct fid_cq *cq, uint64_t *cur,
 				return -FI_ENODATA;
 			}
 		}
-	}
+	} while (total - *cur > 0);
 
 	return 0;
 }
@@ -1728,6 +1961,65 @@ static int ft_get_cq_comp(struct fid_cq *cq, uint64_t *cur,
 	return ret;
 }
 
+static int ft_spin_for_cntr(struct fid_cntr *cntr, uint64_t total, int timeout)
+{
+	struct timespec a, b;
+	uint64_t cur;
+
+	if (timeout >= 0)
+		clock_gettime(CLOCK_MONOTONIC, &a);
+
+	for (;;) {
+		cur = fi_cntr_read(cntr);
+		if (cur >= total)
+			return 0;
+
+		if (timeout >= 0) {
+			clock_gettime(CLOCK_MONOTONIC, &b);
+			if ((b.tv_sec - a.tv_sec) > timeout)
+				break;
+		}
+	}
+
+	fprintf(stderr, "%ds timeout expired\n", timeout);
+	return -FI_ENODATA;
+}
+
+static int ft_wait_for_cntr(struct fid_cntr *cntr, uint64_t total, int timeout)
+{
+	int ret;
+
+	while (fi_cntr_read(cntr) < total) {
+		ret = fi_cntr_wait(cntr, total, timeout);
+		if (ret)
+			FT_PRINTERR("fi_cntr_wait", ret);
+		else
+			break;
+	}
+	return 0;
+}
+
+static int ft_get_cntr_comp(struct fid_cntr *cntr, uint64_t total, int timeout)
+{
+	int ret = 0;
+
+	switch (opts.comp_method) {
+	case FT_COMP_SREAD:
+	case FT_COMP_WAITSET:
+	case FT_COMP_WAIT_FD:
+		ret = ft_wait_for_cntr(cntr, total, timeout);
+		break;
+	default:
+		ret = ft_spin_for_cntr(cntr, total, timeout);
+		break;
+	}
+
+	if (ret)
+		FT_PRINTERR("fs_get_cntr_comp", ret);
+
+	return ret;
+}
+
 int ft_get_rx_comp(uint64_t total)
 {
 	int ret = FI_SUCCESS;
@@ -1735,13 +2027,7 @@ int ft_get_rx_comp(uint64_t total)
 	if (opts.options & FT_OPT_RX_CQ) {
 		ret = ft_get_cq_comp(rxcq, &rx_cq_cntr, total, timeout);
 	} else if (rxcntr) {
-		while (fi_cntr_read(rxcntr) < total) {
-			ret = fi_cntr_wait(rxcntr, total, timeout);
-			if (ret)
-				FT_PRINTERR("fi_cntr_wait", ret);
-			else
-				break;
-		}
+		ret = ft_get_cntr_comp(rxcntr, total, timeout);
 	} else {
 		FT_ERR("Trying to get a RX completion when no RX CQ or counter were opened");
 		ret = -FI_EOTHER;
@@ -1756,14 +2042,129 @@ int ft_get_tx_comp(uint64_t total)
 	if (opts.options & FT_OPT_TX_CQ) {
 		ret = ft_get_cq_comp(txcq, &tx_cq_cntr, total, -1);
 	} else if (txcntr) {
-		ret = fi_cntr_wait(txcntr, total, -1);
-		if (ret)
-			FT_PRINTERR("fi_cntr_wait", ret);
+		ret = ft_get_cntr_comp(txcntr, total, -1);
 	} else {
 		FT_ERR("Trying to get a TX completion when no TX CQ or counter were opened");
 		ret = -FI_EOTHER;
 	}
 	return ret;
+}
+
+int ft_sendmsg(struct fid_ep *ep, fi_addr_t fi_addr,
+		size_t size, struct fi_context *ctx, int flags)
+{
+	int ret;
+	struct fi_msg msg;
+	struct fi_msg_tagged tagged_msg;
+	struct iovec msg_iov;
+
+	msg_iov.iov_base = tx_buf;
+	msg_iov.iov_len = size;
+
+	if (hints->caps & FI_TAGGED) {
+		tagged_msg.msg_iov = &msg_iov;
+		tagged_msg.desc = &mr_desc;
+		tagged_msg.iov_count = 1;
+		tagged_msg.addr = fi_addr;
+		tagged_msg.data = NO_CQ_DATA;
+		tagged_msg.context = ctx;
+		tagged_msg.tag = ft_tag ? ft_tag : tx_seq;
+		tagged_msg.ignore = 0;
+
+		ret = fi_tsendmsg(ep, &tagged_msg, flags);
+		if (ret) {
+			FT_PRINTERR("fi_tsendmsg", ret);
+			return ret;
+		}
+	} else {
+		msg.msg_iov = &msg_iov;
+		msg.desc = &mr_desc;
+		msg.iov_count = 1;
+		msg.addr = fi_addr;
+		msg.data = NO_CQ_DATA;
+		msg.context = ctx;
+
+		ret = fi_sendmsg(ep, &msg, flags);
+		if (ret) {
+			FT_PRINTERR("fi_sendmsg", ret);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+int ft_recvmsg(struct fid_ep *ep, fi_addr_t fi_addr,
+	       size_t size, struct fi_context *ctx, int flags)
+{
+	int ret;
+	struct fi_msg msg;
+	struct fi_msg_tagged tagged_msg;
+	struct iovec msg_iov;
+
+	msg_iov.iov_base = rx_buf;
+	msg_iov.iov_len = size;
+
+	if (hints->caps & FI_TAGGED) {
+		tagged_msg.msg_iov = &msg_iov;
+		tagged_msg.desc = &mr_desc;
+		tagged_msg.iov_count = 1;
+		tagged_msg.addr = fi_addr;
+		tagged_msg.data = NO_CQ_DATA;
+		tagged_msg.context = ctx;
+		tagged_msg.tag = ft_tag ? ft_tag : tx_seq;
+		tagged_msg.ignore = 0;
+
+		ret = fi_trecvmsg(ep, &tagged_msg, flags);
+		if (ret) {
+			FT_PRINTERR("fi_trecvmsg", ret);
+			return ret;
+		}
+	} else {
+		msg.msg_iov = &msg_iov;
+		msg.desc = &mr_desc;
+		msg.iov_count = 1;
+		msg.addr = fi_addr;
+		msg.data = NO_CQ_DATA;
+		msg.context = ctx;
+
+		ret = fi_recvmsg(ep, &msg, flags);
+		if (ret) {
+			FT_PRINTERR("fi_recvmsg", ret);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+int ft_cq_read_verify(struct fid_cq *cq, void *op_context)
+{
+	int ret;
+	struct fi_cq_err_entry completion;
+
+	do {
+		/* read events from the completion queue */
+		ret = fi_cq_read(cq, (void *)&completion, 1);
+
+		if (ret > 0) {
+			if (op_context != completion.op_context) {
+				fprintf(stderr, "ERROR: op ctx=%p cq_ctx=%p\n",
+					op_context, completion.op_context);
+				return -FI_EOTHER;
+			}
+			if (!ft_tag_is_valid(cq, &completion,
+					     ft_tag ? ft_tag : rx_cq_cntr))
+				return -FI_EOTHER;
+		} else if ((ret <= 0) && (ret != -FI_EAGAIN)) {
+			FT_PRINTERR("POLL: Error\n", ret);
+			if (ret == -FI_EAVAIL)
+				FT_PRINTERR("POLL: error available\n", ret);
+			return -FI_EOTHER;
+		}
+	} while (ret == -FI_EAGAIN);
+
+	return 0;
 }
 
 int ft_cq_readerr(struct fid_cq *cq)
@@ -1796,22 +2197,43 @@ void eq_readerr(struct fid_eq *eq, const char *eq_str)
 	}
 }
 
-int ft_sync(void)
+int ft_sync()
 {
 	int ret;
+	int result;
 
 	if (opts.dst_addr) {
-		ret = ft_tx(ep, remote_fi_addr, 1, &tx_ctx);
-		if (ret)
-			return ret;
+		if (!opts.oob_port) {
+			ret = ft_tx(ep, remote_fi_addr, 1, &tx_ctx);
+			if (ret)
+				return ret;
 
-		ret = ft_rx(ep, 1);
+			ret = ft_rx(ep, 1);
+		} else {
+			ret = ft_sock_send(oob_sock, &tx_buf, 1);
+			if (ret)
+				return ret;
+
+			ret = ft_sock_recv(oob_sock, &result, 1);
+			if (ret)
+				return ret;
+		}
 	} else {
-		ret = ft_rx(ep, 1);
-		if (ret)
-			return ret;
+		if (!opts.oob_port) {
+			ret = ft_rx(ep, 1);
+			if (ret)
+				return ret;
 
-		ret = ft_tx(ep, remote_fi_addr, 1, &tx_ctx);
+			ret = ft_tx(ep, remote_fi_addr, 1, &tx_ctx);
+		} else {
+			ret = ft_sock_recv(oob_sock, &result, 1);
+			if (ret)
+				return ret;
+
+			ret = ft_sock_send(oob_sock, &tx_buf, 1);
+			if (ret)
+				return ret;
+		}
 	}
 
 	return ret;
@@ -1899,7 +2321,7 @@ int ft_wait_child(void)
 	return 0;
 }
 
-int ft_finalize(void)
+int ft_finalize_ep(struct fid_ep *ep)
 {
 	struct iovec iov;
 	int ret;
@@ -1949,6 +2371,11 @@ int ft_finalize(void)
 		return ret;
 
 	return 0;
+}
+
+int ft_finalize(void)
+{
+	return ft_finalize_ep(ep);
 }
 
 int64_t get_elapsed(const struct timespec *b, const struct timespec *a,
@@ -2039,6 +2466,8 @@ void ft_addr_usage()
 	FT_PRINT_OPTS_USAGE("-B <src_port>", "non default source port number");
 	FT_PRINT_OPTS_USAGE("-P <dst_port>", "non default destination port number");
 	FT_PRINT_OPTS_USAGE("-s <address>", "source address");
+	FT_PRINT_OPTS_USAGE("-b[=<oob_port>]", "enable out-of-band address exchange and "
+			"synchronization over the, optional, port");
 }
 
 void ft_usage(char *name, char *desc)
@@ -2063,6 +2492,8 @@ void ft_usage(char *name, char *desc)
 	FT_PRINT_OPTS_USAGE("", "fi_multi_ep");
 	FT_PRINT_OPTS_USAGE("", "fi_recv_cancel");
 	FT_PRINT_OPTS_USAGE("", "fi_unexpected_msg");
+	FT_PRINT_OPTS_USAGE("", "fi_resmgmt_test");
+	FT_PRINT_OPTS_USAGE("", "fi_inj_complete");
 	FT_PRINT_OPTS_USAGE("-a <address vector name>", "name of address vector");
 	FT_PRINT_OPTS_USAGE("-h", "display this help output");
 
@@ -2164,6 +2595,13 @@ void ft_parse_addr_opts(int op, char *optarg, struct ft_opts *opts)
 		break;
 	case 'P':
 		opts->dst_port = optarg;
+		break;
+	case 'b':
+		opts->options |= FT_OPT_OOB_SYNC;
+		if (optarg && strlen(optarg) > 1)
+			opts->oob_port = optarg + 1;
+		else
+			opts->oob_port = default_oob_port;
 		break;
 	default:
 		/* let getopt handle unknown opts*/

@@ -377,7 +377,7 @@ static int ft_sync_test(int value)
 
 static int ft_sync_msg_needed()
 {
-	if (!(test_info.comp_type == FT_COMP_CNTR &&
+	if (!(ft_use_comp_cntr(test_info.comp_type) &&
 	    (test_info.test_class & (FI_RMA | FI_ATOMIC))) &&
 	    no_sync_needed(test_info.class_function, test_info.msg_flags))
 		return 0;
@@ -593,7 +593,7 @@ static int ft_bw_rma(void)
 			return ret;
 	} else {
 		if (no_sync_needed(test_info.class_function, test_info.msg_flags) &&
-		    test_info.comp_type != FT_COMP_CNTR)
+		    !(ft_use_comp_cntr(test_info.comp_type)))
 			i = ft_ctrl.xfer_iter;
 		else
 			i = 1;
@@ -694,7 +694,7 @@ static int ft_run_bandwidth(void)
 		if (ft_ctrl.size_array[i] > fabric_info->ep_attr->max_msg_size)
 			break;
 
-		if (test_info.test_class & FI_RMA) {
+		if (test_info.test_class & (FI_RMA | FI_ATOMIC)) {
 			ft_tx_ctrl.msg_size = ft_ctrl.size_array[0];
 			ft_tx_ctrl.rma_msg_size = ft_ctrl.size_array[i];
 		} else {
@@ -893,11 +893,13 @@ static int ft_run_unit(void)
 	return fail;
 }
 
-static void ft_cleanup(void)
+void ft_cleanup(void)
 {
 	FT_CLOSE_FID(ft_rx_ctrl.mr);
 	FT_CLOSE_FID(ft_tx_ctrl.mr);
 	FT_CLOSE_FID(ft_mr_ctrl.mr);
+	FT_CLOSE_FID(ft_atom_ctrl.res_mr);
+	FT_CLOSE_FID(ft_atom_ctrl.comp_mr);
 	ft_free_res();
 	ft_cleanup_xcontrol(&ft_rx_ctrl);
 	ft_cleanup_xcontrol(&ft_tx_ctrl);
@@ -906,7 +908,41 @@ static void ft_cleanup(void)
 	memset(&ft_ctrl, 0, sizeof ft_ctrl);
 }
 
-int ft_run_test()
+static int ft_exchange_mr_addr_key(void)
+{
+	struct fi_rma_iov local_rma_iov = {0};
+	struct fi_rma_iov peer_rma_iov = {0};
+	int ret;
+
+	if (!(test_info.mr_mode & (FI_MR_VIRT_ADDR | FI_MR_PROV_KEY)))
+		return 0;
+
+	if (test_info.mr_mode & FI_MR_VIRT_ADDR)
+		local_rma_iov.addr = (uint64_t) ft_mr_ctrl.buf;
+
+	if (test_info.mr_mode & FI_MR_PROV_KEY)
+		local_rma_iov.key = ft_mr_ctrl.mr_key;
+
+	ret = ft_sock_send(sock, &local_rma_iov, sizeof local_rma_iov);
+	if (ret) {
+		FT_PRINTERR("ft_sock_send", ret);
+		return ret;
+	}
+
+	ret = ft_sock_recv(sock, &peer_rma_iov, sizeof peer_rma_iov);
+	if (ret) {
+		FT_PRINTERR("ft_sock_recv", ret);
+		return ret;
+	}
+
+	ft_mr_ctrl.peer_mr_addr = peer_rma_iov.addr;
+	if (test_info.mr_mode & FI_MR_PROV_KEY)
+		ft_mr_ctrl.peer_mr_key = peer_rma_iov.key;
+
+	return 0;
+}
+
+int ft_open_res()
 {
 	int ret;
 
@@ -936,13 +972,15 @@ int ft_run_test()
 		}
 	}
 
-	if (!opts.dst_addr) {
-		ret = ft_sock_send(sock, &test_info, sizeof test_info);
-		if (ret) {
-			FT_PRINTERR("ft_sock_send", ret);
-			return ret;
-		}
-	}
+	return 0;
+cleanup:
+	ft_cleanup();
+	return ret;
+}
+
+int ft_init_test()
+{
+	int ret;
 
 	ft_sock_sync(0);
 
@@ -951,6 +989,26 @@ int ft_run_test()
 		FT_PRINTERR("ft_enable_comm", ret);
 		goto cleanup;
 	}
+
+	ret = ft_post_recv_bufs();
+	if (ret)
+		return ret;
+
+	ret = ft_exchange_mr_addr_key();
+	if (ret) {
+		FT_PRINTERR("ft_exchange_mr_address", ret);
+		goto cleanup;
+	}
+
+	return 0;
+cleanup:
+	ft_cleanup();
+	return ret;
+}
+
+int ft_run_test()
+{
+	int ret;
 
 	switch (test_info.test_type) {
 	case FT_TEST_UNIT:
@@ -974,7 +1032,6 @@ int ft_run_test()
 	}
 
 	ft_sync_test(0);
-cleanup:
 	ft_cleanup();
 
 	return ret ? ret : -ft_ctrl.error;

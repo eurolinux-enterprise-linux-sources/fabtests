@@ -53,7 +53,7 @@ extern "C" {
 #endif
 
 #include "ft_osd.h"
-#define OFI_UTIL_PREFIX "ofi-"
+#define OFI_UTIL_PREFIX "ofi_"
 #define OFI_NAME_DELIM ';'
 
 #define OFI_MR_BASIC_MAP (FI_MR_ALLOCATED | FI_MR_PROV_KEY | FI_MR_VIRT_ADDR)
@@ -113,6 +113,8 @@ enum {
 	FT_OPT_VERIFY_DATA	= 1 << 7,
 	FT_OPT_ALIGN		= 1 << 8,
 	FT_OPT_BW		= 1 << 9,
+	FT_OPT_CQ_SHARED	= 1 << 10,
+	FT_OPT_OOB_SYNC		= 1 << 11,
 };
 
 /* for RMA tests --- we want to be able to select fi_writedata, but there is no
@@ -123,6 +125,12 @@ enum ft_rma_opcodes {
 	FT_RMA_WRITEDATA,
 };
 
+enum ft_atomic_opcodes {
+	FT_ATOMIC_BASE,
+	FT_ATOMIC_FETCH,
+	FT_ATOMIC_COMPARE,
+};
+
 struct ft_opts {
 	int iterations;
 	int warmup_iterations;
@@ -130,6 +138,8 @@ struct ft_opts {
 	int window_size;
 	int av_size;
 	int verbose;
+	int tx_cq_size;
+	int rx_cq_size;
 	char *src_port;
 	char *dst_port;
 	char *src_addr;
@@ -140,6 +150,7 @@ struct ft_opts {
 	enum ft_comp_method comp_method;
 	int machr;
 	enum ft_rma_opcodes rma_op;
+	char *oob_port;
 	int argc;
 
 	/* Fail if the selected provider does not support FI_MSG_PREFIX.  */
@@ -210,10 +221,11 @@ extern int ft_parent_proc;
 extern int ft_socket_pair[2];
 extern int sock;
 extern int listen_sock;
-#define ADDR_OPTS "B:P:s:a:"
+#define ADDR_OPTS "B:P:s:a:b::"
 #define FAB_OPTS "f:d:p:"
 #define INFO_OPTS FAB_OPTS "e:"
 #define CS_OPTS ADDR_OPTS "I:S:mc:t:w:l"
+#define NO_CQ_DATA 0
 
 extern char default_port[8];
 
@@ -224,9 +236,12 @@ extern char default_port[8];
 		.transfer_size = 1024, \
 		.window_size = 64, \
 		.av_size = 1, \
+		.tx_cq_size = 0, \
+		.rx_cq_size = 0, \
 		.verbose = 0, \
 		.sizes_enabled = FT_DEFAULT_SIZE, \
 		.rma_op = FT_RMA_WRITE, \
+		.oob_port = NULL, \
 		.argc = argc, .argv = argv \
 	}
 
@@ -379,12 +394,18 @@ int ft_sync_pair(int status);
 int ft_fork_and_pair(void);
 int ft_wait_child(void);
 int ft_finalize(void);
+int ft_finalize_ep(struct fid_ep *ep);
 
 size_t ft_rx_prefix_size(void);
 size_t ft_tx_prefix_size(void);
 ssize_t ft_post_rx(struct fid_ep *ep, size_t size, struct fi_context* ctx);
+ssize_t ft_post_rx_buf(struct fid_ep *ep, size_t size, struct fi_context* ctx,
+		       void *op_buf, void *op_mr_desc, uint64_t op_tag);
 ssize_t ft_post_tx(struct fid_ep *ep, fi_addr_t fi_addr, size_t size,
-		struct fi_context* ctx);
+		uint64_t data, struct fi_context* ctx);
+ssize_t ft_post_tx_buf(struct fid_ep *ep, fi_addr_t fi_addr, size_t size,
+		       uint64_t data, struct fi_context* ctx,
+		       void *op_buf, void *op_mr_desc, uint64_t op_tag);
 ssize_t ft_rx(struct fid_ep *ep, size_t size);
 ssize_t ft_tx(struct fid_ep *ep, fi_addr_t fi_addr, size_t size, struct fi_context *ctx);
 ssize_t ft_inject(struct fid_ep *ep, fi_addr_t fi_addr, size_t size);
@@ -395,6 +416,12 @@ ssize_t ft_rma(enum ft_rma_opcodes op, struct fid_ep *ep, size_t size,
 ssize_t ft_post_rma_inject(enum ft_rma_opcodes op, struct fid_ep *ep, size_t size,
 		struct fi_rma_iov *remote);
 
+
+ssize_t ft_post_atomic(enum ft_atomic_opcodes opcode, struct fid_ep *ep,
+		       void *compare, void *compare_desc, void *result,
+		       void *result_desc, struct fi_rma_iov *remote,
+		       enum fi_datatype datatype, enum fi_op atomic_op,
+		       void *context);
 int check_base_atomic_op(struct fid_ep *endpoint, enum fi_op op,
 			 enum fi_datatype datatype, size_t *count);
 int check_fetch_atomic_op(struct fid_ep *endpoint, enum fi_op op,
@@ -405,6 +432,11 @@ int check_compare_atomic_op(struct fid_ep *endpoint, enum fi_op op,
 int ft_cq_readerr(struct fid_cq *cq);
 int ft_get_rx_comp(uint64_t total);
 int ft_get_tx_comp(uint64_t total);
+int ft_recvmsg(struct fid_ep *ep, fi_addr_t fi_addr,
+		size_t size, struct fi_context *ctx, int flags);
+int ft_sendmsg(struct fid_ep *ep, fi_addr_t fi_addr,
+		size_t size, struct fi_context *ctx, int flags);
+int ft_cq_read_verify(struct fid_cq *cq, void *op_context);
 
 void eq_readerr(struct fid_eq *eq, const char *eq_str);
 

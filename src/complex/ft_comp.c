@@ -50,6 +50,48 @@ static size_t comp_entry_size[] = {
 };
 */
 
+int ft_use_comp_cntr(enum ft_comp_type comp_type)
+{
+	if ((comp_type == FT_COMP_CNTR) ||
+		(comp_type == FT_COMP_ALL))
+		return 1;
+
+	return 0;
+}
+
+int ft_use_comp_cq(enum ft_comp_type comp_type)
+{
+	if ((comp_type == FT_COMP_QUEUE) ||
+		(comp_type == FT_COMP_ALL))
+		return 1;
+
+	return 0;
+}
+
+static int ft_check_valid_comp(enum ft_comp_type comp_type)
+{
+	if ((comp_type == FT_COMP_QUEUE) ||
+		(comp_type == FT_COMP_CNTR) ||
+		(comp_type == FT_COMP_ALL))
+		return 1;
+
+	return 0;
+}
+
+int ft_check_cq_completion(uint64_t cq_bind_flags, uint64_t op_flags,
+		enum ft_class_function class_function, uint64_t msg_flags)
+{
+	if (((cq_bind_flags & FI_SELECTIVE_COMPLETION) &&
+		!(op_flags & FI_COMPLETION) &&
+		!(is_msg_func(class_function))) ||
+		((cq_bind_flags & FI_SELECTIVE_COMPLETION) &&
+		is_msg_func(class_function) &&
+		!(msg_flags & FI_COMPLETION)))
+		return 0;
+	else
+		return 1;
+}
+
 static int ft_open_cntrs(void)
 {
 	struct fi_cntr_attr attr;
@@ -121,6 +163,7 @@ int ft_open_comp(void)
 	switch (test_info.comp_type) {
 	case FT_COMP_QUEUE:
 		break;
+	case FT_COMP_ALL:
 	case FT_COMP_CNTR:
 		ret = ft_open_cntrs();
 		break;
@@ -136,15 +179,15 @@ int ft_bind_comp(struct fid_ep *ep)
 	int ret;
 	uint64_t flags;
 
-	flags = FI_TRANSMIT;
+	flags = FI_TRANSMIT | test_info.tx_cq_bind_flags;
 	ret = fi_ep_bind(ep, &txcq->fid, flags);
 	if (ret) {
 		FT_PRINTERR("fi_ep_bind", ret);
 		return ret;
 	}
 
-	if (test_info.comp_type == FT_COMP_CNTR) {
-		flags |= FI_READ | FI_WRITE;
+	if (ft_use_comp_cntr(test_info.comp_type)) {
+		flags = FI_TRANSMIT | FI_READ | FI_WRITE;
 		ret = fi_ep_bind(ep, &txcntr->fid, flags);
 		if (ret) {
 			FT_PRINTERR("fi_ep_bind", ret);
@@ -152,14 +195,15 @@ int ft_bind_comp(struct fid_ep *ep)
 		}
 	}
 
-	flags = FI_RECV;
+	flags = FI_RECV | test_info.rx_cq_bind_flags;
 	ret = fi_ep_bind(ep, &rxcq->fid, flags);
 	if (ret) {
 		FT_PRINTERR("fi_ep_bind", ret);
 		return ret;
 	}
 
-	if (test_info.comp_type == FT_COMP_CNTR) {
+	if (ft_use_comp_cntr(test_info.comp_type)) {
+		flags = FI_RECV;
 		ret = fi_ep_bind(ep, &rxcntr->fid, flags);
 		if (ret) {
 			FT_PRINTERR("fi_ep_bind", ret);
@@ -193,7 +237,7 @@ int ft_bind_comp(struct fid_ep *ep)
 static int ft_comp_x(struct fid_cq *cq, struct ft_xcontrol *ft_x,
 		const char *x_str, int timeout)
 {
-	uint8_t buf[FT_COMP_BUF_SIZE];
+	uint8_t buf[FT_COMP_BUF_SIZE], start = 0;
 	struct timespec s, e;
 	int poll_time = 0;
 	int ret, verify = (test_info.test_type == FT_TEST_UNIT && cq == rxcq);
@@ -201,8 +245,10 @@ static int ft_comp_x(struct fid_cq *cq, struct ft_xcontrol *ft_x,
 	switch(test_info.cq_wait_obj) {
 	case FI_WAIT_NONE:
 		do {
-			if (!poll_time)
+			if (!start) {
 				clock_gettime(CLOCK_MONOTONIC, &s);
+				start = 1;
+			}
 
 			ft_cq_read(fi_cq_read, cq, buf, comp_entry_cnt[ft_x->cq_format],
 					ft_x->credits, x_str, ret, verify);
@@ -250,25 +296,65 @@ static int ft_cntr_x(struct fid_cntr *cntr, struct ft_xcontrol *ft_x,
 
 int ft_comp_rx(int timeout)
 {
-	switch (test_info.comp_type) {
-	case FT_COMP_CNTR:
-		return ft_cntr_x(rxcntr, &ft_rx_ctrl, timeout);
-	case FT_COMP_QUEUE:
-		return ft_comp_x(rxcq, &ft_rx_ctrl, "rxcq", timeout);
-	default:
-		return -FI_ENOSYS;
+	int ret;
+	size_t cur_credits = ft_rx_ctrl.credits;
+
+	if (ft_use_comp_cntr(test_info.comp_type)) {
+		ret = ft_cntr_x(rxcntr, &ft_rx_ctrl, timeout);
+		if (ret)
+			return ret;
 	}
+	if (ft_use_comp_cq(test_info.comp_type)) {
+		if (ft_check_cq_completion(test_info.rx_cq_bind_flags,
+					test_info.rx_op_flags,
+					test_info.class_function,
+					test_info.msg_flags)) {
+			if (test_info.comp_type == FT_COMP_ALL)
+				ft_rx_ctrl.credits = cur_credits;
+			ret = ft_comp_x(rxcq, &ft_rx_ctrl, "rxcq", timeout);
+			if (ret)
+				return ret;
+		} else {
+			if (!ft_use_comp_cntr(test_info.comp_type))
+				ft_rx_ctrl.credits += comp_entry_cnt[ft_rx_ctrl.cq_format];
+		}
+	}
+
+	if (!ft_check_valid_comp(test_info.comp_type))
+		return -FI_ENOSYS;
+
+	return 0;
 }
 
 
 int ft_comp_tx(int timeout)
 {
-	switch (test_info.comp_type) {
-	case FT_COMP_CNTR:
-		return ft_cntr_x(txcntr, &ft_tx_ctrl, timeout);
-	case FT_COMP_QUEUE:
-		return ft_comp_x(txcq, &ft_tx_ctrl, "txcq", timeout);
-	default:
-		return -FI_ENOSYS;
+	int ret;
+	size_t cur_credits = ft_tx_ctrl.credits;
+
+	if (ft_use_comp_cntr(test_info.comp_type)) {
+		ret = ft_cntr_x(txcntr, &ft_tx_ctrl, timeout);
+		if (ret)
+			return ret;
 	}
+	if (ft_use_comp_cq(test_info.comp_type)) {
+		if (ft_check_cq_completion(test_info.tx_cq_bind_flags,
+					test_info.tx_op_flags,
+					test_info.class_function,
+					test_info.msg_flags)) {
+			if (test_info.comp_type == FT_COMP_ALL)
+				ft_tx_ctrl.credits = cur_credits;
+			ret = ft_comp_x(txcq, &ft_tx_ctrl, "txcq", timeout);
+			if (ret)
+				return ret;
+		} else {
+			if (!ft_use_comp_cntr(test_info.comp_type))
+				ft_tx_ctrl.credits += comp_entry_cnt[ft_tx_ctrl.cq_format];
+		}
+	}
+
+	if (!ft_check_valid_comp(test_info.comp_type))
+		return -FI_ENOSYS;
+
+	return 0;
 }

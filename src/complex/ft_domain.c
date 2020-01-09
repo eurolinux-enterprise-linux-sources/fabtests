@@ -185,7 +185,8 @@ static int ft_setup_xcontrol_bufs(struct ft_xcontrol *ctrl)
 	size = ft_ctrl.size_array[ft_ctrl.size_cnt - 1];
 	if (!ctrl->buf) {
 		ctrl->buf = calloc(1, size);
-		if (!ctrl->buf)
+		ctrl->cpy_buf = calloc(1, size);
+		if (!ctrl->buf || !ctrl->cpy_buf)
 			return -FI_ENOMEM;
 	} else {
 		memset(ctrl->buf, 0, size);
@@ -291,7 +292,7 @@ static int ft_setup_mr_control(struct ft_mr_control *ctrl)
 			return ret;
 		}
 		ctrl->memdesc = fi_mr_desc(ctrl->mr);
-		ctrl->mr_key = fi_mr_key(ctrl->mr);
+		ctrl->peer_mr_key = ctrl->mr_key = fi_mr_key(ctrl->mr);
 	}
 	
 	return 0;

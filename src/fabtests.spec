@@ -1,5 +1,5 @@
 Name: fabtests
-Version: 1.5.3
+Version: 1.6.1
 Release: 1%{?dist}
 Summary: Test suite for libfabric API
 Group: System Environment/Libraries

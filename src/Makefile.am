@@ -2,7 +2,12 @@ configdir = $(datarootdir)/${PACKAGE_NAME}
 AM_CFLAGS = -g -Wall -D_GNU_SOURCE -D 'CONFIG_PATH="${configdir}"' -I$(srcdir)/include
 ACLOCAL_AMFLAGS = -I config
 
+if MACOS
+os_excludes = -f ./test_configs/osx.exclude
+endif
+
 bin_PROGRAMS = \
+	simple/fi_av_xfer \
 	simple/fi_msg \
 	simple/fi_msg_sockets \
 	simple/fi_rdm \
@@ -25,6 +30,9 @@ bin_PROGRAMS = \
 	simple/fi_multi_ep \
 	simple/fi_recv_cancel \
 	simple/fi_unexpected_msg \
+	simple/fi_inj_complete \
+	simple/fi_resource_freeing \
+	streaming/fi_resmgmt_test \
 	streaming/fi_msg_rma \
 	streaming/fi_rdm_atomic \
 	streaming/fi_rdm_multi_recv \
@@ -57,21 +65,30 @@ dist_noinst_SCRIPTS = \
 	scripts/parseyaml.py
 
 nobase_dist_config_DATA = \
+	test_configs/osx.exclude \
         test_configs/eq_cq.test \
         test_configs/lat_bw.test \
         test_configs/sockets/all.test \
         test_configs/sockets/quick.test \
 	test_configs/sockets/complete.test \
+	test_configs/sockets/verify.test \
         test_configs/udp/all.test \
         test_configs/udp/lat_bw.test \
         test_configs/udp/quick.test \
         test_configs/udp/simple.test \
+	test_configs/udp/udp.exclude \
         test_configs/verbs/all.test \
         test_configs/verbs/quick.test \
+	test_configs/verbs/verbs.exclude \
 	test_configs/usnic/all.test \
 	test_configs/usnic/quick.test \
 	test_configs/psm/all.test \
-	test_configs/psm2/all.test
+	test_configs/psm2/all.test \
+	test_configs/psm2/verify.test \
+	test_configs/psm2/psm2.exclude \
+	test_configs/ofi_rxm/ofi_rxm.exclude \
+	test_configs/shm/all.test \
+	test_configs/shm/verify.test
 
 noinst_LTLIBRARIES = libfabtests.la
 libfabtests_la_SOURCES = \
@@ -95,6 +112,10 @@ if !HAVE_CLOCK_GETTIME
 libfabtests_la_SOURCES += common/osx/osd.c
 endif
 endif
+
+simple_fi_av_xfer_SOURCES = \
+	simple/av_xfer.c
+simple_fi_av_xfer_LDADD = libfabtests.la
 
 simple_fi_msg_sockets_SOURCES = \
 	simple/msg_sockets.c
@@ -183,6 +204,18 @@ simple_fi_rdm_multi_domain_LDADD = libfabtests.la
 simple_fi_recv_cancel_SOURCES = \
 	simple/recv_cancel.c
 simple_fi_recv_cancel_LDADD = libfabtests.la
+
+simple_fi_inj_complete_SOURCES = \
+	simple/inj_complete.c
+simple_fi_inj_complete_LDADD = libfabtests.la
+
+simple_fi_resource_freeing_SOURCES = \
+	simple/resource_freeing.c
+simple_fi_resource_freeing_LDADD = libfabtests.la
+
+streaming_fi_resmgmt_test_SOURCES = \
+	streaming/resmgmt_test.c
+streaming_fi_resmgmt_test_LDADD = libfabtests.la
 
 streaming_fi_msg_rma_SOURCES = \
 	streaming/msg_rma.c
@@ -312,5 +345,5 @@ dist-hook: fabtests.spec
 	cp fabtests.spec $(distdir)
 
 test:
-	./scripts/runfabtests.sh -vvv
-	./scripts/runfabtests.sh -vvv udp
+	./scripts/runfabtests.sh -vvv -S $(os_excludes)
+	./scripts/runfabtests.sh -vvv -S $(os_excludes) -R -f ./test_configs/udp/udp.exclude udp

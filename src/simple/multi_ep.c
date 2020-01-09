@@ -115,7 +115,7 @@ static int do_transfers(void)
 			ft_fill_buf(send_bufs[i], opts.transfer_size);
 
 		tx_buf = send_bufs[i];
-		ret = ft_post_tx(eps[i], remote_addr[i], opts.transfer_size, &send_ctx[i]);
+		ret = ft_post_tx(eps[i], remote_addr[i], opts.transfer_size, NO_CQ_DATA, &send_ctx[i]);
 		if (ret)
 			return ret;
 	}
@@ -136,7 +136,9 @@ static int do_transfers(void)
 		}
 	}
 
-	ft_finalize();
+	for (i = 0; i < num_eps; i++)
+		ft_finalize_ep(eps[i]);
+
 	printf("PASSED multi ep\n");
 	return 0;
 }

@@ -1,10 +1,11 @@
 dnl
 dnl Copyright (c) 2016-2017 Cisco Systems, Inc.  All rights reserved.
+dnl Copyright (c) 2018 Intel Corporation, Inc.  All rights reserved.
 dnl
 dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.57)
-AC_INIT([fabtests], [1.5.3], [ofiwg@lists.openfabrics.org])
+AC_INIT([fabtests], [1.6.1], [ofiwg@lists.openfabrics.org])
 AC_CONFIG_AUX_DIR(config)
 AC_CONFIG_MACRO_DIR(config)
 AC_CONFIG_HEADERS(config.h)
@@ -37,11 +38,13 @@ AM_CONDITIONAL([LINUX], [test $linux -eq 1])
 AM_CONDITIONAL([FREEBSD], [test $freebsd -eq 1])
 
 base_c_warn_flags="-Wall -Wundef -Wpointer-arith"
+debug_c_warn_flags="-Wextra -Wno-unused-parameter -Wno-sign-compare -Wno-missing-field-initializers"
+debug_c_other_flags="-fstack-protector-strong"
 
 AC_ARG_ENABLE([debug],
 	[AS_HELP_STRING([--enable-debug],
 			[Enable debugging - default NO])],
-	[CFLAGS="-g -O0 ${base_c_warn_flags} -Wextra -Wno-unused-parameter -Wno-sign-compare -Wno-missing-field-initializers $CFLAGS"
+	[CFLAGS="-g -O0 ${base_c_warn_flags} ${debug_c_warn_flags} ${debug_c_other_flags} $CFLAGS"
 	 dbg=1],
 	[dbg=0])
 

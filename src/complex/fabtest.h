@@ -73,6 +73,7 @@ extern const unsigned int lg_size_cnt;
 struct ft_xcontrol {
 	struct fid_ep		*ep;
 	void			*buf;
+	void			*cpy_buf;
 	struct fid_mr		*mr;
 	void			*memdesc;
 	struct iovec		*iov;
@@ -114,6 +115,8 @@ struct ft_mr_control {
 	struct fid_mr		*mr;
 	void			*memdesc;
 	uint64_t		mr_key;
+	uint64_t		peer_mr_addr;
+	uint64_t		peer_mr_key;
 };
 
 struct ft_control {
@@ -139,14 +142,17 @@ enum {
 	FT_MAX_AV_TYPES		= 3,
 	FT_MAX_PROV_MODES	= 4,
 	FT_MAX_WAIT_OBJ		= 5,
+	FT_MAX_MR_MODES		= 11,
 	FT_DEFAULT_CREDITS	= 128,
 	FT_COMP_BUF_SIZE	= 256,
+	FT_MAX_FLAGS		= 64,
 };
 
 enum ft_comp_type {
 	FT_COMP_UNSPEC,
 	FT_COMP_QUEUE,
 	FT_COMP_CNTR,
+	FT_COMP_ALL,
 	FT_MAX_COMP
 };
 
@@ -239,6 +245,11 @@ struct ft_set {
 	uint64_t		test_class[FT_MAX_CLASS];
 	uint64_t		constant_caps[FT_MAX_CAPS];
 	uint64_t		test_flags;
+	uint64_t		mr_mode[FT_MAX_MR_MODES];
+	uint64_t 		rx_cq_bind_flags[FT_MAX_FLAGS];
+	uint64_t 		tx_cq_bind_flags[FT_MAX_FLAGS];
+	uint64_t 		rx_op_flags[FT_MAX_FLAGS];
+	uint64_t 		tx_op_flags[FT_MAX_FLAGS];
 };
 
 struct ft_series {
@@ -273,6 +284,7 @@ struct ft_info {
 	uint64_t		test_class;
 	uint64_t		caps;
 	uint64_t		mode;
+	uint64_t		mr_mode;
 	enum fi_av_type		av_type;
 	enum fi_ep_type		ep_type;
 	enum ft_comp_type	comp_type;
@@ -285,6 +297,10 @@ struct ft_info {
 	char			service[FI_NAME_MAX];
 	char			prov_name[FI_NAME_MAX];
 	char			fabric_name[FI_NAME_MAX];
+	uint64_t 		rx_cq_bind_flags;
+	uint64_t 		tx_cq_bind_flags;
+	uint64_t 		rx_op_flags;
+	uint64_t 		tx_op_flags;
 };
 
 
@@ -313,6 +329,8 @@ int ft_open_comp();
 int ft_bind_comp(struct fid_ep *ep);
 int ft_comp_rx(int timeout);
 int ft_comp_tx(int timeout);
+int ft_use_comp_cntr(enum ft_comp_type comp_type);
+int ft_use_comp_cq(enum ft_comp_type comp_type);
 
 int ft_open_active();
 int ft_open_passive();
@@ -322,6 +340,8 @@ void ft_format_iov(struct iovec *iov, size_t cnt, char *buf, size_t len);
 void ft_format_iocs(struct iovec *iov, size_t *iov_count);
 void ft_next_iov_cnt(struct ft_xcontrol *ctrl, size_t max_iov_cnt);
 int ft_get_ctx(struct ft_xcontrol *ctrl, struct fi_context **ctx);
+int ft_check_cq_completion(uint64_t cq_bind_flags, uint64_t op_flags,
+		enum ft_class_function class_function, uint64_t msg_flags);
 
 int ft_send_sync_msg();
 int ft_recv_n_msg();
@@ -335,6 +355,9 @@ int ft_send_dgram_flood();
 int ft_sendrecv_dgram();
 int ft_send_rma();
 
+void ft_cleanup(void);
+int ft_open_res();
+int ft_init_test();
 int ft_run_test();
 int ft_reset_ep();
 void ft_record_error(int error);

@@ -1,5 +1,5 @@
 Name: fabtests
-Version: 1.5.3
+Version: 1.6.1
 Release: 1%{?dist}
 Summary: Test suite for libfabric API
 License: GPLv2 or BSD
@@ -41,6 +41,10 @@ rm -f %{buildroot}%{_libdir}/*.la
 %{_prefix}/share/fabtests/test_configs
 
 %changelog
+* Tue Jun  5 2018 Honggang Li <honli@redhat.com> - 1.6.1-1
+- Rebase to latest release 1.6.1
+- Resolves: bz1575467
+
 * Fri Jan 12 2018 Honggang Li <honli@redhat.com> - 1.5.3-1
 - Rebase to upstream release 1.5.3
 - Resolves: bz1533297

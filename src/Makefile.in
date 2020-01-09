@@ -91,8 +91,9 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-bin_PROGRAMS = simple/fi_msg$(EXEEXT) simple/fi_msg_sockets$(EXEEXT) \
-	simple/fi_rdm$(EXEEXT) simple/fi_rdm_rma_simple$(EXEEXT) \
+bin_PROGRAMS = simple/fi_av_xfer$(EXEEXT) simple/fi_msg$(EXEEXT) \
+	simple/fi_msg_sockets$(EXEEXT) simple/fi_rdm$(EXEEXT) \
+	simple/fi_rdm_rma_simple$(EXEEXT) \
 	simple/fi_rdm_rma_trigger$(EXEEXT) \
 	simple/fi_rdm_deferred_wq$(EXEEXT) simple/fi_dgram$(EXEEXT) \
 	simple/fi_mcast$(EXEEXT) simple/fi_dgram_waitset$(EXEEXT) \
@@ -104,6 +105,9 @@ bin_PROGRAMS = simple/fi_msg$(EXEEXT) simple/fi_msg_sockets$(EXEEXT) \
 	simple/fi_rdm_multi_domain$(EXEEXT) \
 	simple/fi_multi_ep$(EXEEXT) simple/fi_recv_cancel$(EXEEXT) \
 	simple/fi_unexpected_msg$(EXEEXT) \
+	simple/fi_inj_complete$(EXEEXT) \
+	simple/fi_resource_freeing$(EXEEXT) \
+	streaming/fi_resmgmt_test$(EXEEXT) \
 	streaming/fi_msg_rma$(EXEEXT) streaming/fi_rdm_atomic$(EXEEXT) \
 	streaming/fi_rdm_multi_recv$(EXEEXT) \
 	streaming/fi_rdm_rma$(EXEEXT) streaming/fi_msg_stream$(EXEEXT) \
@@ -215,6 +219,9 @@ am_ported_librdmacm_fi_cmatose_OBJECTS =  \
 ported_librdmacm_fi_cmatose_OBJECTS =  \
 	$(am_ported_librdmacm_fi_cmatose_OBJECTS)
 ported_librdmacm_fi_cmatose_DEPENDENCIES = libfabtests.la
+am_simple_fi_av_xfer_OBJECTS = simple/av_xfer.$(OBJEXT)
+simple_fi_av_xfer_OBJECTS = $(am_simple_fi_av_xfer_OBJECTS)
+simple_fi_av_xfer_DEPENDENCIES = libfabtests.la
 am_simple_fi_cm_data_OBJECTS = simple/cm_data.$(OBJEXT)
 simple_fi_cm_data_OBJECTS = $(am_simple_fi_cm_data_OBJECTS)
 simple_fi_cm_data_DEPENDENCIES = libfabtests.la
@@ -228,6 +235,9 @@ am_simple_fi_dgram_waitset_OBJECTS = simple/dgram_waitset.$(OBJEXT)
 simple_fi_dgram_waitset_OBJECTS =  \
 	$(am_simple_fi_dgram_waitset_OBJECTS)
 simple_fi_dgram_waitset_DEPENDENCIES = libfabtests.la
+am_simple_fi_inj_complete_OBJECTS = simple/inj_complete.$(OBJEXT)
+simple_fi_inj_complete_OBJECTS = $(am_simple_fi_inj_complete_OBJECTS)
+simple_fi_inj_complete_DEPENDENCIES = libfabtests.la
 am_simple_fi_mcast_OBJECTS = simple/mcast.$(OBJEXT)
 simple_fi_mcast_OBJECTS = $(am_simple_fi_mcast_OBJECTS)
 simple_fi_mcast_DEPENDENCIES = libfabtests.la
@@ -283,6 +293,11 @@ simple_fi_rdm_tagged_peek_DEPENDENCIES = libfabtests.la
 am_simple_fi_recv_cancel_OBJECTS = simple/recv_cancel.$(OBJEXT)
 simple_fi_recv_cancel_OBJECTS = $(am_simple_fi_recv_cancel_OBJECTS)
 simple_fi_recv_cancel_DEPENDENCIES = libfabtests.la
+am_simple_fi_resource_freeing_OBJECTS =  \
+	simple/resource_freeing.$(OBJEXT)
+simple_fi_resource_freeing_OBJECTS =  \
+	$(am_simple_fi_resource_freeing_OBJECTS)
+simple_fi_resource_freeing_DEPENDENCIES = libfabtests.la
 am_simple_fi_scalable_ep_OBJECTS = simple/scalable_ep.$(OBJEXT)
 simple_fi_scalable_ep_OBJECTS = $(am_simple_fi_scalable_ep_OBJECTS)
 simple_fi_scalable_ep_DEPENDENCIES = libfabtests.la
@@ -312,6 +327,11 @@ streaming_fi_rdm_multi_recv_DEPENDENCIES = libfabtests.la
 am_streaming_fi_rdm_rma_OBJECTS = streaming/rdm_rma.$(OBJEXT)
 streaming_fi_rdm_rma_OBJECTS = $(am_streaming_fi_rdm_rma_OBJECTS)
 streaming_fi_rdm_rma_DEPENDENCIES = libfabtests.la
+am_streaming_fi_resmgmt_test_OBJECTS =  \
+	streaming/resmgmt_test.$(OBJEXT)
+streaming_fi_resmgmt_test_OBJECTS =  \
+	$(am_streaming_fi_resmgmt_test_OBJECTS)
+streaming_fi_resmgmt_test_DEPENDENCIES = libfabtests.la
 am__objects_3 = unit/common.$(OBJEXT)
 am_unit_fi_av_test_OBJECTS = unit/av_test.$(OBJEXT) $(am__objects_3)
 unit_fi_av_test_OBJECTS = $(am_unit_fi_av_test_OBJECTS)
@@ -409,10 +429,11 @@ SOURCES = $(libfabtests_la_SOURCES) \
 	$(benchmarks_fi_rma_bw_SOURCES) $(complex_fi_ubertest_SOURCES) \
 	$(ported_libibverbs_fi_rc_pingpong_SOURCES) \
 	$(ported_librdmacm_fi_cmatose_SOURCES) \
-	$(simple_fi_cm_data_SOURCES) $(simple_fi_cq_data_SOURCES) \
-	$(simple_fi_dgram_SOURCES) $(simple_fi_dgram_waitset_SOURCES) \
-	$(simple_fi_mcast_SOURCES) $(simple_fi_msg_SOURCES) \
-	$(simple_fi_msg_epoll_SOURCES) \
+	$(simple_fi_av_xfer_SOURCES) $(simple_fi_cm_data_SOURCES) \
+	$(simple_fi_cq_data_SOURCES) $(simple_fi_dgram_SOURCES) \
+	$(simple_fi_dgram_waitset_SOURCES) \
+	$(simple_fi_inj_complete_SOURCES) $(simple_fi_mcast_SOURCES) \
+	$(simple_fi_msg_SOURCES) $(simple_fi_msg_epoll_SOURCES) \
 	$(simple_fi_msg_sockets_SOURCES) $(simple_fi_multi_ep_SOURCES) \
 	$(simple_fi_multi_mr_SOURCES) $(simple_fi_poll_SOURCES) \
 	$(simple_fi_rdm_SOURCES) $(simple_fi_rdm_deferred_wq_SOURCES) \
@@ -422,6 +443,7 @@ SOURCES = $(libfabtests_la_SOURCES) \
 	$(simple_fi_rdm_shared_av_SOURCES) \
 	$(simple_fi_rdm_tagged_peek_SOURCES) \
 	$(simple_fi_recv_cancel_SOURCES) \
+	$(simple_fi_resource_freeing_SOURCES) \
 	$(simple_fi_scalable_ep_SOURCES) \
 	$(simple_fi_shared_ctx_SOURCES) \
 	$(simple_fi_unexpected_msg_SOURCES) \
@@ -429,10 +451,12 @@ SOURCES = $(libfabtests_la_SOURCES) \
 	$(streaming_fi_msg_stream_SOURCES) \
 	$(streaming_fi_rdm_atomic_SOURCES) \
 	$(streaming_fi_rdm_multi_recv_SOURCES) \
-	$(streaming_fi_rdm_rma_SOURCES) $(unit_fi_av_test_SOURCES) \
-	$(unit_fi_cntr_test_SOURCES) $(unit_fi_cq_test_SOURCES) \
-	$(unit_fi_dom_test_SOURCES) $(unit_fi_eq_test_SOURCES) \
-	$(unit_fi_getinfo_test_SOURCES) $(unit_fi_mr_test_SOURCES)
+	$(streaming_fi_rdm_rma_SOURCES) \
+	$(streaming_fi_resmgmt_test_SOURCES) \
+	$(unit_fi_av_test_SOURCES) $(unit_fi_cntr_test_SOURCES) \
+	$(unit_fi_cq_test_SOURCES) $(unit_fi_dom_test_SOURCES) \
+	$(unit_fi_eq_test_SOURCES) $(unit_fi_getinfo_test_SOURCES) \
+	$(unit_fi_mr_test_SOURCES)
 DIST_SOURCES = $(am__libfabtests_la_SOURCES_DIST) \
 	$(benchmarks_fi_dgram_pingpong_SOURCES) \
 	$(benchmarks_fi_msg_bw_SOURCES) \
@@ -444,10 +468,11 @@ DIST_SOURCES = $(am__libfabtests_la_SOURCES_DIST) \
 	$(benchmarks_fi_rma_bw_SOURCES) $(complex_fi_ubertest_SOURCES) \
 	$(ported_libibverbs_fi_rc_pingpong_SOURCES) \
 	$(ported_librdmacm_fi_cmatose_SOURCES) \
-	$(simple_fi_cm_data_SOURCES) $(simple_fi_cq_data_SOURCES) \
-	$(simple_fi_dgram_SOURCES) $(simple_fi_dgram_waitset_SOURCES) \
-	$(simple_fi_mcast_SOURCES) $(simple_fi_msg_SOURCES) \
-	$(simple_fi_msg_epoll_SOURCES) \
+	$(simple_fi_av_xfer_SOURCES) $(simple_fi_cm_data_SOURCES) \
+	$(simple_fi_cq_data_SOURCES) $(simple_fi_dgram_SOURCES) \
+	$(simple_fi_dgram_waitset_SOURCES) \
+	$(simple_fi_inj_complete_SOURCES) $(simple_fi_mcast_SOURCES) \
+	$(simple_fi_msg_SOURCES) $(simple_fi_msg_epoll_SOURCES) \
 	$(simple_fi_msg_sockets_SOURCES) $(simple_fi_multi_ep_SOURCES) \
 	$(simple_fi_multi_mr_SOURCES) $(simple_fi_poll_SOURCES) \
 	$(simple_fi_rdm_SOURCES) $(simple_fi_rdm_deferred_wq_SOURCES) \
@@ -457,6 +482,7 @@ DIST_SOURCES = $(am__libfabtests_la_SOURCES_DIST) \
 	$(simple_fi_rdm_shared_av_SOURCES) \
 	$(simple_fi_rdm_tagged_peek_SOURCES) \
 	$(simple_fi_recv_cancel_SOURCES) \
+	$(simple_fi_resource_freeing_SOURCES) \
 	$(simple_fi_scalable_ep_SOURCES) \
 	$(simple_fi_shared_ctx_SOURCES) \
 	$(simple_fi_unexpected_msg_SOURCES) \
@@ -464,10 +490,12 @@ DIST_SOURCES = $(am__libfabtests_la_SOURCES_DIST) \
 	$(streaming_fi_msg_stream_SOURCES) \
 	$(streaming_fi_rdm_atomic_SOURCES) \
 	$(streaming_fi_rdm_multi_recv_SOURCES) \
-	$(streaming_fi_rdm_rma_SOURCES) $(unit_fi_av_test_SOURCES) \
-	$(unit_fi_cntr_test_SOURCES) $(unit_fi_cq_test_SOURCES) \
-	$(unit_fi_dom_test_SOURCES) $(unit_fi_eq_test_SOURCES) \
-	$(unit_fi_getinfo_test_SOURCES) $(unit_fi_mr_test_SOURCES)
+	$(streaming_fi_rdm_rma_SOURCES) \
+	$(streaming_fi_resmgmt_test_SOURCES) \
+	$(unit_fi_av_test_SOURCES) $(unit_fi_cntr_test_SOURCES) \
+	$(unit_fi_cq_test_SOURCES) $(unit_fi_dom_test_SOURCES) \
+	$(unit_fi_eq_test_SOURCES) $(unit_fi_getinfo_test_SOURCES) \
+	$(unit_fi_mr_test_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -644,6 +672,7 @@ top_srcdir = @top_srcdir@
 configdir = $(datarootdir)/${PACKAGE_NAME}
 AM_CFLAGS = -g -Wall -D_GNU_SOURCE -D 'CONFIG_PATH="${configdir}"' -I$(srcdir)/include
 ACLOCAL_AMFLAGS = -I config
+@MACOS_TRUE@os_excludes = -f ./test_configs/osx.exclude
 dist_bin_SCRIPTS = \
 	scripts/runfabtests.sh \
 	scripts/rft_yaml_to_junit_xml
@@ -652,21 +681,30 @@ dist_noinst_SCRIPTS = \
 	scripts/parseyaml.py
 
 nobase_dist_config_DATA = \
+	test_configs/osx.exclude \
         test_configs/eq_cq.test \
         test_configs/lat_bw.test \
         test_configs/sockets/all.test \
         test_configs/sockets/quick.test \
 	test_configs/sockets/complete.test \
+	test_configs/sockets/verify.test \
         test_configs/udp/all.test \
         test_configs/udp/lat_bw.test \
         test_configs/udp/quick.test \
         test_configs/udp/simple.test \
+	test_configs/udp/udp.exclude \
         test_configs/verbs/all.test \
         test_configs/verbs/quick.test \
+	test_configs/verbs/verbs.exclude \
 	test_configs/usnic/all.test \
 	test_configs/usnic/quick.test \
 	test_configs/psm/all.test \
-	test_configs/psm2/all.test
+	test_configs/psm2/all.test \
+	test_configs/psm2/verify.test \
+	test_configs/psm2/psm2.exclude \
+	test_configs/ofi_rxm/ofi_rxm.exclude \
+	test_configs/shm/all.test \
+	test_configs/shm/verify.test
 
 noinst_LTLIBRARIES = libfabtests.la
 libfabtests_la_SOURCES = common/shared.c common/jsmn.c \
@@ -680,6 +718,10 @@ unit_srcs = \
 	include/unit_common.h \
 	unit/common.c
 
+simple_fi_av_xfer_SOURCES = \
+	simple/av_xfer.c
+
+simple_fi_av_xfer_LDADD = libfabtests.la
 simple_fi_msg_sockets_SOURCES = \
 	simple/msg_sockets.c
 
@@ -768,6 +810,18 @@ simple_fi_recv_cancel_SOURCES = \
 	simple/recv_cancel.c
 
 simple_fi_recv_cancel_LDADD = libfabtests.la
+simple_fi_inj_complete_SOURCES = \
+	simple/inj_complete.c
+
+simple_fi_inj_complete_LDADD = libfabtests.la
+simple_fi_resource_freeing_SOURCES = \
+	simple/resource_freeing.c
+
+simple_fi_resource_freeing_LDADD = libfabtests.la
+streaming_fi_resmgmt_test_SOURCES = \
+	streaming/resmgmt_test.c
+
+streaming_fi_resmgmt_test_LDADD = libfabtests.la
 streaming_fi_msg_rma_SOURCES = \
 	streaming/msg_rma.c
 
@@ -1143,6 +1197,12 @@ simple/$(am__dirstamp):
 simple/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) simple/$(DEPDIR)
 	@: > simple/$(DEPDIR)/$(am__dirstamp)
+simple/av_xfer.$(OBJEXT): simple/$(am__dirstamp) \
+	simple/$(DEPDIR)/$(am__dirstamp)
+
+simple/fi_av_xfer$(EXEEXT): $(simple_fi_av_xfer_OBJECTS) $(simple_fi_av_xfer_DEPENDENCIES) $(EXTRA_simple_fi_av_xfer_DEPENDENCIES) simple/$(am__dirstamp)
+	@rm -f simple/fi_av_xfer$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(simple_fi_av_xfer_OBJECTS) $(simple_fi_av_xfer_LDADD) $(LIBS)
 simple/cm_data.$(OBJEXT): simple/$(am__dirstamp) \
 	simple/$(DEPDIR)/$(am__dirstamp)
 
@@ -1167,6 +1227,12 @@ simple/dgram_waitset.$(OBJEXT): simple/$(am__dirstamp) \
 simple/fi_dgram_waitset$(EXEEXT): $(simple_fi_dgram_waitset_OBJECTS) $(simple_fi_dgram_waitset_DEPENDENCIES) $(EXTRA_simple_fi_dgram_waitset_DEPENDENCIES) simple/$(am__dirstamp)
 	@rm -f simple/fi_dgram_waitset$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(simple_fi_dgram_waitset_OBJECTS) $(simple_fi_dgram_waitset_LDADD) $(LIBS)
+simple/inj_complete.$(OBJEXT): simple/$(am__dirstamp) \
+	simple/$(DEPDIR)/$(am__dirstamp)
+
+simple/fi_inj_complete$(EXEEXT): $(simple_fi_inj_complete_OBJECTS) $(simple_fi_inj_complete_DEPENDENCIES) $(EXTRA_simple_fi_inj_complete_DEPENDENCIES) simple/$(am__dirstamp)
+	@rm -f simple/fi_inj_complete$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(simple_fi_inj_complete_OBJECTS) $(simple_fi_inj_complete_LDADD) $(LIBS)
 simple/mcast.$(OBJEXT): simple/$(am__dirstamp) \
 	simple/$(DEPDIR)/$(am__dirstamp)
 
@@ -1257,6 +1323,12 @@ simple/recv_cancel.$(OBJEXT): simple/$(am__dirstamp) \
 simple/fi_recv_cancel$(EXEEXT): $(simple_fi_recv_cancel_OBJECTS) $(simple_fi_recv_cancel_DEPENDENCIES) $(EXTRA_simple_fi_recv_cancel_DEPENDENCIES) simple/$(am__dirstamp)
 	@rm -f simple/fi_recv_cancel$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(simple_fi_recv_cancel_OBJECTS) $(simple_fi_recv_cancel_LDADD) $(LIBS)
+simple/resource_freeing.$(OBJEXT): simple/$(am__dirstamp) \
+	simple/$(DEPDIR)/$(am__dirstamp)
+
+simple/fi_resource_freeing$(EXEEXT): $(simple_fi_resource_freeing_OBJECTS) $(simple_fi_resource_freeing_DEPENDENCIES) $(EXTRA_simple_fi_resource_freeing_DEPENDENCIES) simple/$(am__dirstamp)
+	@rm -f simple/fi_resource_freeing$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(simple_fi_resource_freeing_OBJECTS) $(simple_fi_resource_freeing_LDADD) $(LIBS)
 simple/scalable_ep.$(OBJEXT): simple/$(am__dirstamp) \
 	simple/$(DEPDIR)/$(am__dirstamp)
 
@@ -1311,6 +1383,12 @@ streaming/rdm_rma.$(OBJEXT): streaming/$(am__dirstamp) \
 streaming/fi_rdm_rma$(EXEEXT): $(streaming_fi_rdm_rma_OBJECTS) $(streaming_fi_rdm_rma_DEPENDENCIES) $(EXTRA_streaming_fi_rdm_rma_DEPENDENCIES) streaming/$(am__dirstamp)
 	@rm -f streaming/fi_rdm_rma$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(streaming_fi_rdm_rma_OBJECTS) $(streaming_fi_rdm_rma_LDADD) $(LIBS)
+streaming/resmgmt_test.$(OBJEXT): streaming/$(am__dirstamp) \
+	streaming/$(DEPDIR)/$(am__dirstamp)
+
+streaming/fi_resmgmt_test$(EXEEXT): $(streaming_fi_resmgmt_test_OBJECTS) $(streaming_fi_resmgmt_test_DEPENDENCIES) $(EXTRA_streaming_fi_resmgmt_test_DEPENDENCIES) streaming/$(am__dirstamp)
+	@rm -f streaming/fi_resmgmt_test$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(streaming_fi_resmgmt_test_OBJECTS) $(streaming_fi_resmgmt_test_LDADD) $(LIBS)
 unit/$(am__dirstamp):
 	@$(MKDIR_P) unit
 	@: > unit/$(am__dirstamp)
@@ -1438,10 +1516,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@complex/$(DEPDIR)/ofi_atomic.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ported/libibverbs/$(DEPDIR)/rc_pingpong.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@ported/librdmacm/$(DEPDIR)/cmatose.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/av_xfer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/cm_data.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/cq_data.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/dgram.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/dgram_waitset.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/inj_complete.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/mcast.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/msg.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/msg_epoll.Po@am__quote@
@@ -1457,6 +1537,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/rdm_shared_av.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/rdm_tagged_peek.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/recv_cancel.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/resource_freeing.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/scalable_ep.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/shared_ctx.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@simple/$(DEPDIR)/unexpected_msg.Po@am__quote@
@@ -1465,6 +1546,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@streaming/$(DEPDIR)/rdm_atomic.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@streaming/$(DEPDIR)/rdm_multi_recv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@streaming/$(DEPDIR)/rdm_rma.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@streaming/$(DEPDIR)/resmgmt_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/av_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/cntr_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@unit/$(DEPDIR)/common.Po@am__quote@
@@ -1970,8 +2052,8 @@ dist-hook: fabtests.spec
 	cp fabtests.spec $(distdir)
 
 test:
-	./scripts/runfabtests.sh -vvv
-	./scripts/runfabtests.sh -vvv udp
+	./scripts/runfabtests.sh -vvv -S $(os_excludes)
+	./scripts/runfabtests.sh -vvv -S $(os_excludes) -R -f ./test_configs/udp/udp.exclude udp
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
