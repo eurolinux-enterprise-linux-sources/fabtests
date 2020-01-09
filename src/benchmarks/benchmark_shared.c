@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2015-2017 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2013-2015 Intel Corporation.  All rights reserved.
  *
  * This software is available to you under a choice of one of two
@@ -46,7 +46,7 @@ void ft_parse_benchmark_opts(int op, char *optarg)
 		opts.options |= FT_OPT_VERIFY_DATA;
 		break;
 	case 'k':
-		hints->mode |= FI_MSG_PREFIX;
+		ft_force_prefix(hints, &opts);
 		break;
 	case 'j':
 		hints->tx_attr->inject_size = atoi(optarg);
@@ -62,7 +62,7 @@ void ft_parse_benchmark_opts(int op, char *optarg)
 void ft_benchmark_usage(void)
 {
 	FT_PRINT_OPTS_USAGE("-v", "enables data_integrity checks");
-	FT_PRINT_OPTS_USAGE("-k", "enable prefix mode");
+	FT_PRINT_OPTS_USAGE("-k", "force prefix mode");
 	FT_PRINT_OPTS_USAGE("-j", "maximum inject message size");
 	FT_PRINT_OPTS_USAGE("-W", "window size* (for bandwidth tests)\n\n"
 			"* The following condition is required to have at least "
@@ -94,7 +94,7 @@ int pingpong(void)
 				ft_start();
 
 			if (opts.transfer_size < fi->tx_attr->inject_size)
-				ret = ft_inject(ep, opts.transfer_size);
+				ret = ft_inject(ep, remote_fi_addr, opts.transfer_size);
 			else
 				ret = ft_tx(ep, remote_fi_addr, opts.transfer_size, &tx_ctx);
 			if (ret)
@@ -114,7 +114,7 @@ int pingpong(void)
 				return ret;
 
 			if (opts.transfer_size < fi->tx_attr->inject_size)
-				ret = ft_inject(ep, opts.transfer_size);
+				ret = ft_inject(ep, remote_fi_addr, opts.transfer_size);
 			else
 				ret = ft_tx(ep, remote_fi_addr, opts.transfer_size, &tx_ctx);
 			if (ret)
@@ -174,7 +174,7 @@ int bandwidth(void)
 				ft_start();
 
 			if (opts.transfer_size < fi->tx_attr->inject_size)
-				ret = ft_inject(ep, opts.transfer_size);
+				ret = ft_inject(ep, remote_fi_addr, opts.transfer_size);
 			else
 				ret = ft_post_tx(ep, remote_fi_addr, opts.transfer_size,
 						 &tx_ctx_arr[j]);
@@ -265,7 +265,15 @@ int bandwidth_rma(enum ft_rma_opcodes rma_op, struct fi_rma_iov *remote)
 			break;
 		case FT_RMA_WRITEDATA:
 			if (!opts.dst_addr) {
-				ret = ft_post_rx(ep, 0, &tx_ctx_arr[j]);
+				if (fi->rx_attr->mode & FI_RX_CQ_DATA)
+					ret = ft_post_rx(ep, 0, &tx_ctx_arr[j]);
+				else
+					/* Just increment the seq # instead of
+					 * posting recv so that we wait for
+					 * remote write completion on the next
+					 * iteration */
+					rx_seq++;
+
 			} else {
 				if (opts.transfer_size < fi->tx_attr->inject_size) {
 					ret = ft_post_rma_inject(FT_RMA_WRITEDATA,

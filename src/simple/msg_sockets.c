@@ -305,10 +305,19 @@ static int setup_handle(void)
 	static char buf[BUFSIZ];
 	struct addrinfo *ai, aihints;
 	const char *bound_addr_str;
+	char *saved_addr;
+	size_t saved_addrlen;
 	int ret;
+
+	ret = ft_startup();
+	if (ret) {
+		FT_ERR("ft_startup: %d", ret);
+		return ret;
+	}
 
 	memset(&aihints, 0, sizeof aihints);
 	aihints.ai_flags = AI_PASSIVE;
+	aihints.ai_family = AF_INET;
 	ret = getaddrinfo(opts.src_addr, opts.src_port, &aihints, &ai);
 	if (ret == EAI_SYSTEM) {
 		FT_ERR("getaddrinfo for %s:%s: %s",
@@ -332,9 +341,12 @@ static int setup_handle(void)
 	ret = fi_getinfo(FT_FIVERSION, opts.src_addr, NULL, FI_SOURCE, hints, &fi_pep);
 	if (ret) {
 		FT_PRINTERR("fi_getinfo", ret);
-		goto out;
+		goto freeai;
 	}
-	free(fi_pep->src_addr);
+
+	/* Open passive endpoint without source address */
+	saved_addr = fi_pep->src_addr;
+	saved_addrlen = fi_pep->src_addrlen;
 	fi_pep->src_addr = NULL;
 	fi_pep->src_addrlen = 0;
 
@@ -397,6 +409,9 @@ static int setup_handle(void)
 
 	hints->handle = &pep->fid;
 out:
+	fi_pep->src_addr = saved_addr;
+	fi_pep->src_addrlen = saved_addrlen;
+freeai:
 	freeaddrinfo(ai);
 	return ret;
 }
@@ -434,7 +449,7 @@ static int run(void)
 		return ret;
 	}
 
-	ret = send_recv_greeting(ep);
+	ret = ft_send_recv_greeting(ep);
 
 	fi_shutdown(ep, 0);
 	return ret;
@@ -467,10 +482,10 @@ int main(int argc, char **argv)
 	if (optind < argc)
 		opts.dst_addr = argv[optind];
 
-	hints->ep_attr->type	= FI_EP_MSG;
-	hints->caps		= FI_MSG;
-	hints->mode		= FI_LOCAL_MR;
-	hints->addr_format	= FI_SOCKADDR;
+	hints->ep_attr->type		= FI_EP_MSG;
+	hints->caps			= FI_MSG;
+	hints->domain_attr->mr_mode 	= FI_MR_LOCAL | OFI_MR_BASIC_MAP;
+	hints->addr_format		= FI_SOCKADDR;
 
 	ret = run();
 

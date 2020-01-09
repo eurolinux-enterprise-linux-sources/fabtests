@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 Intel Corporation.  All rights reserved.
+ * Copyright (c) 2013-2017 Intel Corporation.  All rights reserved.
  * Copyright (c) 2016, Cisco Systems, Inc. All rights reserved.
  *
  * This software is available to you under the BSD license below:
@@ -47,12 +47,12 @@ static int ft_init_xcontrol(struct ft_xcontrol *ctrl)
 	memset(ctrl, 0, sizeof *ctrl);
 	ctrl->credits = FT_DEFAULT_CREDITS;
 	ctrl->max_credits =  FT_DEFAULT_CREDITS;
-	ctrl->comp_wait = test_info.cq_wait_obj;
 
 	ctrl->iov = calloc(ft_ctrl.iov_array[ft_ctrl.iov_cnt - 1], sizeof *ctrl->iov);
 	ctrl->iov_desc = calloc(ft_ctrl.iov_array[ft_ctrl.iov_cnt - 1],
 				sizeof *ctrl->iov_desc);
-	if (!ctrl->iov || !ctrl->iov_desc)
+	ctrl->ctx = calloc(ctrl->max_credits, sizeof *ctrl->ctx);
+	if (!ctrl->iov || !ctrl->iov_desc || !ctrl->ctx)
 		return -FI_ENOMEM;
 
 	return 0;
@@ -62,11 +62,11 @@ static int ft_init_rx_control(void)
 {
 	int ret;
 
-	ret= ft_init_xcontrol(&ft_rx_ctrl);
+	ret = ft_init_xcontrol(&ft_rx_ctrl);
 	if (ret)
 		return ret;
 
-	ft_rx_ctrl.cq_format = FI_CQ_FORMAT_MSG;
+	ft_rx_ctrl.cq_format = FI_CQ_FORMAT_DATA;
 	ft_rx_ctrl.addr = FI_ADDR_UNSPEC;
 
 	ft_rx_ctrl.msg_size = med_size_array[med_size_cnt - 1];
@@ -91,6 +91,23 @@ static int ft_init_tx_control(void)
 	return 0;
 }
 
+static int ft_init_atomic_control(struct ft_atomic_control *ctrl)
+{
+	memset(ctrl, 0, sizeof *ctrl);
+	ctrl->op = test_info.op;
+
+	ctrl->ioc = calloc(ft_ctrl.iov_array[ft_ctrl.iov_cnt - 1], sizeof *ctrl->ioc);
+	ctrl->res_ioc = calloc(ft_ctrl.iov_array[ft_ctrl.iov_cnt - 1],
+				sizeof *ctrl->res_ioc);
+	ctrl->comp_ioc = calloc(ft_ctrl.iov_array[ft_ctrl.iov_cnt - 1],
+				sizeof *ctrl->comp_ioc);
+
+	if (!ctrl->ioc || !ctrl->res_ioc || !ctrl->comp_ioc)
+		return -FI_ENOMEM;
+
+	return 0;
+}
+
 static int ft_init_control(void)
 {
 	int ret;
@@ -102,7 +119,7 @@ static int ft_init_control(void)
 	ft_ctrl.iov_array = sm_size_array;
 	ft_ctrl.iov_cnt = sm_size_cnt;
 
-	if (test_info.caps & FI_RMA) {
+	if (test_info.test_class & FI_RMA) {
 		ft_ctrl.size_array = lg_size_array;
 		ft_ctrl.size_cnt = lg_size_cnt;
 	} else {
@@ -111,8 +128,14 @@ static int ft_init_control(void)
 	}
 
 	ret = ft_init_rx_control();
-	if (!ret)
-		ret = ft_init_tx_control();
+	if (ret)
+		return ret;
+
+	ret = ft_init_tx_control();
+	if (ret)
+		return ret;
+
+	ret = ft_init_atomic_control(&ft_atom_ctrl);
 	return ret;
 }
 
@@ -121,6 +144,24 @@ static void ft_cleanup_xcontrol(struct ft_xcontrol *ctrl)
 	free(ctrl->buf);
 	free(ctrl->iov);
 	free(ctrl->iov_desc);
+	free(ctrl->ctx);
+	memset(ctrl, 0, sizeof *ctrl);
+}
+
+static void ft_cleanup_atomic_control(struct ft_atomic_control *ctrl)
+{
+	free(ctrl->res_buf);
+	free(ctrl->comp_buf);
+	free(ctrl->ioc);
+	free(ctrl->res_ioc);
+	free(ctrl->comp_ioc);
+	free(ctrl->orig_buf);
+	memset(ctrl, 0, sizeof *ctrl);
+}
+
+static void ft_cleanup_mr_control(struct ft_mr_control *ctrl)
+{
+	free(ctrl->buf);
 	memset(ctrl, 0, sizeof *ctrl);
 }
 
@@ -206,7 +247,7 @@ static void ft_format_iov_random(struct iovec *iov, size_t cnt, char *buf,
 			 * the remaining IOV count. This is so we can reserve at
 			 * least a length of 1 for every IOV.
 			 */
-			weight = (rand() % (len - (cnt - i))) + 1;
+			weight = (rand() % (len - (cnt - i) + 1)) + 1;
 		}
 
 		len -= weight;
@@ -236,6 +277,32 @@ void ft_format_iov(struct iovec *iov, size_t cnt, char *buf, size_t len)
 	options[choice](iov, cnt, buf, len);
 }
 
+static void ft_iov_to_ioc(struct iovec *iov, struct fi_ioc *ioc, size_t cnt,
+		   enum fi_datatype datatype, char *buf)
+{
+	int i;
+	size_t offset = 0;
+	for (i = 0; i < cnt; i++) {
+		ioc[i].count = iov[i].iov_len;
+		ioc[i].addr = buf + offset;
+		offset += ioc[i].count * ft_atom_ctrl.datatype_size;
+	}
+}
+
+void ft_format_iocs(struct iovec *iov, size_t *iov_count)
+{
+	while(ft_ctrl.iov_array[ft_tx_ctrl.iov_iter] > ft_atom_ctrl.count)
+		ft_next_iov_cnt(&ft_tx_ctrl, fabric_info->tx_attr->iov_limit);
+
+	*iov_count = ft_ctrl.iov_array[ft_tx_ctrl.iov_iter];
+	ft_format_iov(iov, *iov_count, ft_tx_ctrl.buf, ft_atom_ctrl.count);
+	ft_iov_to_ioc(iov, ft_atom_ctrl.ioc, *iov_count,
+			ft_atom_ctrl.datatype, ft_tx_ctrl.buf);
+	ft_iov_to_ioc(iov, ft_atom_ctrl.res_ioc, *iov_count,
+			ft_atom_ctrl.datatype, ft_atom_ctrl.res_buf);
+	ft_iov_to_ioc(iov, ft_atom_ctrl.comp_ioc, *iov_count,
+			ft_atom_ctrl.datatype, ft_atom_ctrl.comp_buf);
+}
 
 void ft_next_iov_cnt(struct ft_xcontrol *ctrl, size_t max_iov_cnt)
 {
@@ -243,6 +310,55 @@ void ft_next_iov_cnt(struct ft_xcontrol *ctrl, size_t max_iov_cnt)
 	if (ctrl->iov_iter > ft_ctrl.iov_cnt ||
 	    ft_ctrl.iov_array[ctrl->iov_iter] > max_iov_cnt)
 		ctrl->iov_iter = 0;
+}
+
+int ft_get_ctx(struct ft_xcontrol *ctrl, struct fi_context **ctx)
+{
+	int ret;
+
+	ctrl->curr_ctx++;
+	if (ctrl->curr_ctx >= ctrl->max_credits) {
+		if (ctrl == &ft_tx_ctrl) {
+			while (ctrl->credits < ctrl->max_credits) {
+				ret = ft_comp_tx(FT_COMP_TO);
+				if (ret)
+					return ret;
+			}
+		}
+		ctrl->curr_ctx = 0;
+	}
+	*ctx = &(ctrl->ctx[ctrl->curr_ctx]);
+	return 0;
+}
+
+static int check_atomic(size_t *count)
+{
+	int ret;
+
+	switch (test_info.class_function) {
+	case FT_FUNC_ATOMIC:
+	case FT_FUNC_ATOMICV:
+	case FT_FUNC_ATOMICMSG:
+	case FT_FUNC_INJECT_ATOMIC:
+		ret = check_base_atomic_op(ft_tx_ctrl.ep, ft_atom_ctrl.op,
+			ft_atom_ctrl.datatype, count);
+		break;
+	case FT_FUNC_FETCH_ATOMIC:
+	case FT_FUNC_FETCH_ATOMICV:
+	case FT_FUNC_FETCH_ATOMICMSG:
+		ret = check_fetch_atomic_op(ft_tx_ctrl.ep, ft_atom_ctrl.op,
+			ft_atom_ctrl.datatype, count);
+		break;
+	case FT_FUNC_COMPARE_ATOMIC:
+	case FT_FUNC_COMPARE_ATOMICV:
+	default:
+		ret = check_compare_atomic_op(ft_tx_ctrl.ep, ft_atom_ctrl.op,
+			ft_atom_ctrl.datatype, count);
+	}
+
+	ft_atom_ctrl.datatype_size = datatype_to_size(ft_atom_ctrl.datatype);
+
+	return ret;
 }
 
 static int ft_sync_test(int value)
@@ -256,9 +372,93 @@ static int ft_sync_test(int value)
 	return ft_sock_sync(value);
 }
 
+#define no_sync_needed(func,flag) (is_data_func(func) ||				\
+				(is_msg_func(func) && flag == FI_REMOTE_CQ_DATA))
+
+static int ft_sync_msg_needed()
+{
+	if (!(test_info.comp_type == FT_COMP_CNTR &&
+	    (test_info.test_class & (FI_RMA | FI_ATOMIC))) &&
+	    no_sync_needed(test_info.class_function, test_info.msg_flags))
+		return 0;
+
+	return ft_send_sync_msg();
+}
+
+static int ft_check_verify_cnt()
+{
+	if (test_info.msg_flags == FI_REMOTE_CQ_DATA &&
+	    ft_ctrl.verify_cnt != ft_ctrl.xfer_iter)
+		return -FI_EIO;
+	return 0;
+}
+
+static int ft_pingpong_rma(void)
+{
+	int ret = 0, i;
+	size_t count;
+
+	if (test_info.test_class & FI_ATOMIC) {
+		ret = check_atomic(&count);
+
+		ft_atom_ctrl.count = ft_tx_ctrl.rma_msg_size / ft_atom_ctrl.datatype_size;
+		if (ret == -FI_ENOSYS || ret == -FI_EOPNOTSUPP ||
+		    ft_atom_ctrl.count > count || ft_atom_ctrl.count == 0) {
+			return 0;
+		}
+		if (ret)
+			return ret;
+	}
+
+	if (listen_sock < 0) {
+		for (i = 0; i < ft_ctrl.xfer_iter; i++) {
+			ret = ft_send_rma();
+			if (ret)
+				return ret;
+
+			if (!is_inject_func(test_info.class_function)) {
+				ret = ft_comp_tx(FT_COMP_TO);
+				if (ret)
+					return ret;
+			}
+			ret = ft_sync_msg_needed();
+			if (ret)
+				return ret;
+
+			ret = ft_recv_msg();
+			if (ret)
+				return ret;
+		}
+	} else {
+		for (i = 0; i < ft_ctrl.xfer_iter; i++) {
+			ret = ft_recv_msg();
+			if (ret)
+				return ret;
+
+			ret = ft_send_rma();
+			if (ret)
+				return ret;
+
+			if (!is_inject_func(test_info.class_function)) {
+				ret = ft_comp_tx(FT_COMP_TO);
+				if (ret)
+					return ret;
+			}
+
+			ret = ft_sync_msg_needed();
+			if (ret)
+				return ret;
+		}
+	}
+	return ret;
+}
+
 static int ft_pingpong(void)
 {
 	int ret, i;
+
+	if (test_info.test_class & (FI_RMA | FI_ATOMIC))
+		return ft_pingpong_rma();
 
 	// TODO: current flow will not handle manual progress mode
 	// it can get stuck with both sides receiving
@@ -325,17 +525,22 @@ static int ft_run_latency(void)
 	int ret, i;
 
 	for (i = 0; i < ft_ctrl.size_cnt; i += ft_ctrl.inc_step) {
-		ft_tx_ctrl.msg_size = ft_ctrl.size_array[i];
-		if (ft_tx_ctrl.msg_size > fabric_info->ep_attr->max_msg_size)
+		if (ft_ctrl.size_array[i] > fabric_info->ep_attr->max_msg_size)
 			break;
 
-		if (((test_info.class_function == FT_FUNC_INJECT) ||
-			(test_info.class_function == FT_FUNC_INJECTDATA)) &&
-			(ft_tx_ctrl.msg_size > fabric_info->tx_attr->inject_size))
+		if (test_info.test_class & (FI_RMA | FI_ATOMIC)) {
+			ft_tx_ctrl.msg_size = ft_ctrl.size_array[0];
+			ft_tx_ctrl.rma_msg_size = ft_ctrl.size_array[i];
+		} else {
+			ft_tx_ctrl.msg_size = ft_ctrl.size_array[i];
+		}
+
+		if (is_inject_func(test_info.class_function) &&
+			(ft_ctrl.size_array[i] > fabric_info->tx_attr->inject_size))
 			break;
 
 		ft_ctrl.xfer_iter = test_info.test_flags & FT_FLAG_QUICKTEST ?
-				5 : size_to_count(ft_tx_ctrl.msg_size);
+				5 : size_to_count(ft_ctrl.size_array[i]);
 
 		ret = ft_sync_test(0);
 		if (ret)
@@ -354,15 +559,58 @@ static int ft_run_latency(void)
 			return ret;
 		}
 
-		show_perf("lat", ft_tx_ctrl.msg_size, ft_ctrl.xfer_iter, &start, &end, 2);
+		show_perf("lat", ft_ctrl.size_array[i], ft_ctrl.xfer_iter, &start, &end, 2);
 	}
 
+	return 0;
+}
+
+static int ft_bw_rma(void)
+{
+	int ret, i;
+	size_t count;
+
+	if (test_info.test_class & FI_ATOMIC) {
+		ret = check_atomic(&count);
+
+		ft_atom_ctrl.count = ft_tx_ctrl.rma_msg_size / ft_atom_ctrl.datatype_size;
+		if (ret == -FI_ENOSYS || ret == -FI_EOPNOTSUPP ||
+		    ft_atom_ctrl.count > count || ft_atom_ctrl.count == 0) {
+			return 0;
+		}
+		if (ret)
+			return ret;
+	}
+
+	if (listen_sock < 0) {
+		for (i = 0; i < ft_ctrl.xfer_iter; i++) {
+			ret = ft_send_rma();
+			if (ret)
+				return ret;
+		}
+		ret = ft_sync_msg_needed();
+		if (ret)
+			return ret;
+	} else {
+		if (no_sync_needed(test_info.class_function, test_info.msg_flags) &&
+		    test_info.comp_type != FT_COMP_CNTR)
+			i = ft_ctrl.xfer_iter;
+		else
+			i = 1;
+
+		ret = ft_recv_n_msg(i);
+		if (ret)
+			return ret;
+	}
 	return 0;
 }
 
 static int ft_bw(void)
 {
 	int ret, i;
+
+	if (test_info.test_class & (FI_RMA | FI_ATOMIC))
+		return ft_bw_rma();
 
 	if (listen_sock < 0) {
 		for (i = 0; i < ft_ctrl.xfer_iter; i++) {
@@ -375,15 +623,9 @@ static int ft_bw(void)
 		if (ret)
 			return ret;
 	} else {
-		for (i = 0; i < ft_ctrl.xfer_iter; i += ft_rx_ctrl.credits) {
-			ret = ft_post_recv_bufs();
-			if (ret)
-				return ret;
-
-			ret = ft_comp_rx(0);
-			if (ret)
-				return ret;
-                }
+		ret = ft_recv_n_msg(ft_ctrl.xfer_iter);
+		if (ret)
+			return ret;
 
 		ret = ft_send_msg();
 		if (ret)
@@ -449,17 +691,22 @@ static int ft_run_bandwidth(void)
 	int ret, i;
 
 	for (i = 0; i < ft_ctrl.size_cnt; i += ft_ctrl.inc_step) {
-		ft_tx_ctrl.msg_size = ft_ctrl.size_array[i];
-		if (ft_tx_ctrl.msg_size > fabric_info->ep_attr->max_msg_size)
+		if (ft_ctrl.size_array[i] > fabric_info->ep_attr->max_msg_size)
 			break;
 
-		if (((test_info.class_function == FT_FUNC_INJECT) ||
-			(test_info.class_function == FT_FUNC_INJECTDATA)) &&
-			(ft_tx_ctrl.msg_size > fabric_info->tx_attr->inject_size))
+		if (test_info.test_class & FI_RMA) {
+			ft_tx_ctrl.msg_size = ft_ctrl.size_array[0];
+			ft_tx_ctrl.rma_msg_size = ft_ctrl.size_array[i];
+		} else {
+			ft_tx_ctrl.msg_size = ft_ctrl.size_array[i];
+		}
+
+		if (is_inject_func(test_info.class_function) &&
+			(ft_ctrl.size_array[i] > fabric_info->tx_attr->inject_size))
 			break;
 
 		ft_ctrl.xfer_iter = test_info.test_flags & FT_FLAG_QUICKTEST ?
-				5 : size_to_count(ft_tx_ctrl.msg_size);
+				5 : size_to_count(ft_ctrl.size_array[i]);
 		recv_cnt = ft_ctrl.xfer_iter;
 
 		ret = ft_sync_test(0);
@@ -479,19 +726,183 @@ static int ft_run_bandwidth(void)
 			return ret;
 		}
 
-		show_perf("bw", ft_tx_ctrl.msg_size, recv_cnt, &start, &end, 1);
+		show_perf("bw", ft_ctrl.size_array[i], recv_cnt, &start, &end, 1);
 	}
 
 	return 0;
+}
+
+static int ft_unit_rma(void)
+{
+	int ret, i, fail = 0;
+
+	for (i = 0; i < ft_ctrl.xfer_iter; i++) {
+		ft_sync_fill_bufs(ft_tx_ctrl.rma_msg_size);
+
+		ret = ft_send_rma();
+		if (ret)
+			return ret;
+
+		if (!is_inject_func(test_info.class_function)) {
+			ret = ft_comp_tx(FT_COMP_TO);
+			if (ret)
+				return ret;
+		}
+
+		ret = ft_sync_msg_needed();
+		if (ret)
+			return ret;
+
+		ret = ft_recv_msg();
+		if (ret)
+			return ret;
+
+		ret = ft_verify_bufs();
+		if (ret)
+			fail = -FI_EIO;
+	}
+
+	ret = ft_check_verify_cnt();
+	if (ret)
+		return ret;
+
+	return fail;
+}
+
+static int ft_unit_atomic(void)
+{
+	int ret, i, fail = 0;
+	size_t count;
+
+	ret = check_atomic(&count);
+
+	ft_atom_ctrl.count = ft_tx_ctrl.rma_msg_size / ft_atom_ctrl.datatype_size;
+	if (ret == -FI_ENOSYS || ret == -FI_EOPNOTSUPP ||
+	    ft_atom_ctrl.count > count || ft_atom_ctrl.count == 0) {
+		return 0;
+	}
+	if (ret)
+		return ret;
+
+	for (i = 0; i < ft_ctrl.xfer_iter; i++) {
+		ft_sync_fill_bufs(ft_tx_ctrl.rma_msg_size);
+
+		ret = ft_send_rma();
+		if (ret)
+			return ret;
+
+		if (!is_inject_func(test_info.class_function)) {
+			ret = ft_comp_tx(FT_COMP_TO);
+			if (ret)
+				return ret;
+		}
+		ret = ft_sync_msg_needed();
+		if (ret)
+			return ret;
+
+		ret = ft_recv_msg();
+		if (ret)
+			return ret;
+
+		ret = ft_verify_bufs();
+		if (ret)
+			fail = -FI_EIO;
+	}
+
+	ret = ft_check_verify_cnt();
+	if (ret)
+		return ret;
+	return fail;
+}
+
+static int ft_unit(void)
+{
+	int ret, i, fail = 0;
+
+	ft_ctrl.verify_cnt = 0;
+	if (test_info.test_class & FI_RMA)
+		return ft_unit_rma();
+	else if (test_info.test_class & FI_ATOMIC)
+		return ft_unit_atomic();
+
+	for (i = 0; i < ft_ctrl.xfer_iter; i++) {
+		ft_sync_fill_bufs(ft_tx_ctrl.msg_size);
+
+		ret = ft_send_msg();
+		if (ret)
+			return ret;
+
+		ret = ft_recv_msg();
+		if (ret)
+			return ret;
+
+		ret = ft_verify_bufs();
+		if (ret)
+			fail = -FI_EIO;
+	}
+	ret = ft_check_verify_cnt();
+	if (ret)
+		return ret;
+	return fail;
+}
+
+static int ft_run_unit(void)
+{
+	int i, ret, fail;
+
+	fail = ret = 0;
+
+	for (i = 0; i < ft_ctrl.size_cnt; i += ft_ctrl.inc_step) {
+		if (ft_ctrl.size_array[i] > fabric_info->ep_attr->max_msg_size)
+			break;
+
+		if (test_info.test_class & (FI_RMA | FI_ATOMIC)) {
+			ft_tx_ctrl.msg_size = ft_ctrl.size_array[0];
+			ft_tx_ctrl.rma_msg_size = ft_ctrl.size_array[i];
+		} else {
+			ft_tx_ctrl.msg_size = ft_ctrl.size_array[i];
+		}
+
+		if (is_inject_func(test_info.class_function) &&
+			(ft_ctrl.size_array[i] > fabric_info->tx_attr->inject_size))
+			break;
+
+		ft_ctrl.xfer_iter = test_info.test_flags & FT_FLAG_QUICKTEST ?
+				5 : size_to_count(ft_ctrl.size_array[i]);
+
+		ret = ft_sync_test(0);
+		if (ret)
+			return ret;
+
+		ret = ft_post_recv_bufs();
+		if (ret)
+			return ret;
+
+		ret = ft_unit();
+		if (ret) {
+			if (ret != -FI_EIO)
+				return ret;
+			fail = -FI_EIO;
+		}
+	}
+	if (fail)
+		printf("unit test FAILED\n");
+	else
+		printf("unit test PASSED\n");
+
+	return fail;
 }
 
 static void ft_cleanup(void)
 {
 	FT_CLOSE_FID(ft_rx_ctrl.mr);
 	FT_CLOSE_FID(ft_tx_ctrl.mr);
+	FT_CLOSE_FID(ft_mr_ctrl.mr);
 	ft_free_res();
 	ft_cleanup_xcontrol(&ft_rx_ctrl);
 	ft_cleanup_xcontrol(&ft_tx_ctrl);
+	ft_cleanup_mr_control(&ft_mr_ctrl);
+	ft_cleanup_atomic_control(&ft_atom_ctrl);
 	memset(&ft_ctrl, 0, sizeof ft_ctrl);
 }
 
@@ -525,6 +936,14 @@ int ft_run_test()
 		}
 	}
 
+	if (!opts.dst_addr) {
+		ret = ft_sock_send(sock, &test_info, sizeof test_info);
+		if (ret) {
+			FT_PRINTERR("ft_sock_send", ret);
+			return ret;
+		}
+	}
+
 	ft_sock_sync(0);
 
 	ret = ft_enable_comm();
@@ -534,6 +953,11 @@ int ft_run_test()
 	}
 
 	switch (test_info.test_type) {
+	case FT_TEST_UNIT:
+		ret = ft_run_unit();
+		if (ret)
+			FT_PRINTERR("ft_run_unit", ret);
+		break;
 	case FT_TEST_LATENCY:
 		ret = ft_run_latency();
 		if (ret)

@@ -178,10 +178,10 @@ fail:
 
 /*
  * Tests:
- * - write overflow
+ * - eq size test
  */
 static int
-eq_write_overflow()
+eq_size_verify()
 {
 	struct fi_eq_entry entry;
 	int testret;
@@ -205,12 +205,6 @@ eq_write_overflow()
 			sprintf(err_buf, "fi_eq_write ret=%d, %s", ret, fi_strerror(-ret));
 			goto fail;
 		}
-	}
-
-	ret = fi_eq_write(eq, FI_NOTIFY, &entry, sizeof(entry), 0);
-	if (ret != -FI_EAGAIN && ret != sizeof(entry)) {
-		sprintf(err_buf, "fi_eq_write of full EQ returned %d", ret);
-		goto fail;
 	}
 
 	testret = PASS;
@@ -349,8 +343,8 @@ static int sread_event(int timeout, uint64_t flags)
 	int ret;
 
 	ft_start();
-
 	ret = fi_eq_sread(eq, &event, &entry, sizeof(entry), timeout, flags);
+	ft_stop();
 	if (ret != sizeof(entry)) {
 		sprintf(err_buf, "fi_eq_sread returned %d, %s", ret,
 				fi_strerror(-ret));
@@ -358,8 +352,6 @@ static int sread_event(int timeout, uint64_t flags)
 	}
 
 	/* check timeout accuracy */
-	ft_stop();
-
 	elapsed = get_elapsed(&start, &end, MILLI);
 	if (elapsed > (int) (timeout * 1.25)) {
 		sprintf(err_buf, "fi_eq_sread slept %d ms, expected %d",
@@ -476,13 +468,13 @@ eq_wait_fd_sread()
 	/* timed sread on empty EQ, 2s timeout */
 	ft_start();
 	ret = fi_eq_sread(eq, &event, &entry, sizeof(entry), 2000, 0);
+	ft_stop();
 	if (ret != -FI_EAGAIN) {
 		sprintf(err_buf, "fi_eq_read of empty EQ returned %d", ret);
 		goto fail;
 	}
 
 	/* check timeout accuracy */
-	ft_stop();
 	elapsed = get_elapsed(&start, &end, MILLI);
 	if (elapsed < 1500 || elapsed > 2500) {
 		sprintf(err_buf, "fi_eq_sread slept %d ms, expected 2000",
@@ -499,18 +491,18 @@ eq_wait_fd_sread()
 		goto fail;
 	}
 
-	/* timed sread on EQ with event, 2s timeout */
-	ft_start();
 	event = ~0;
 	memset(&entry, 0, sizeof(entry));
+	/* timed sread on EQ with event, 2s timeout */
+	ft_start();
 	ret = fi_eq_sread(eq, &event, &entry, sizeof(entry), 2000, 0);
+	ft_stop();
 	if (ret != sizeof(entry)) {
 		sprintf(err_buf, "fi_eq_read ret=%d, %s", ret, fi_strerror(-ret));
 		goto fail;
 	}
 
 	/* check that no undue waiting occurred */
-	ft_stop();
 	elapsed = get_elapsed(&start, &end, MILLI);
 	if (elapsed > 5) {
 		sprintf(err_buf, "fi_eq_sread slept %d ms, expected immediate return",
@@ -543,7 +535,7 @@ fail:
 struct test_entry test_array[] = {
 	TEST_ENTRY(eq_open_close, "Test open and close of EQ for various sizes"),
 	TEST_ENTRY(eq_write_read_self, "Test writing and reading to EQ"),
-	TEST_ENTRY(eq_write_overflow, "Test writing # of entries that exceed EQ size"),
+	TEST_ENTRY(eq_size_verify, "Test EQ supports writing # of entries = size"),
 	TEST_ENTRY(eq_wait_fd_poll, "Test polling on fd extracted from EQ"),
 	TEST_ENTRY(eq_wait_fd_sread, "Test EQ sread"),
 	TEST_ENTRY(eq_wait_read_peek, "Test EQ read with FI_PEEK"),
@@ -578,6 +570,8 @@ int main(int argc, char **argv)
 	}
 
 	hints->mode = ~0;
+	hints->domain_attr->mode = ~0;
+	hints->domain_attr->mr_mode = ~(FI_MR_BASIC | FI_MR_SCALABLE);
 
 	ret = fi_getinfo(FT_FIVERSION, NULL, 0, 0, hints, &fi);
 	if (ret) {

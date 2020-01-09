@@ -8,7 +8,9 @@ bin_PROGRAMS = \
 	simple/fi_rdm \
 	simple/fi_rdm_rma_simple \
 	simple/fi_rdm_rma_trigger \
+	simple/fi_rdm_deferred_wq \
 	simple/fi_dgram \
+	simple/fi_mcast \
 	simple/fi_dgram_waitset \
 	simple/fi_rdm_tagged_peek \
 	simple/fi_cq_data \
@@ -18,6 +20,11 @@ bin_PROGRAMS = \
 	simple/fi_msg_epoll \
 	simple/fi_rdm_shared_av \
 	simple/fi_cm_data \
+	simple/fi_multi_mr \
+	simple/fi_rdm_multi_domain \
+	simple/fi_multi_ep \
+	simple/fi_recv_cancel \
+	simple/fi_unexpected_msg \
 	streaming/fi_msg_rma \
 	streaming/fi_rdm_atomic \
 	streaming/fi_rdm_multi_recv \
@@ -34,8 +41,8 @@ bin_PROGRAMS = \
 	unit/fi_eq_test \
 	unit/fi_cq_test \
 	unit/fi_mr_test \
+	unit/fi_cntr_test \
 	unit/fi_av_test \
-	unit/fi_size_left_test \
 	unit/fi_dom_test \
 	unit/fi_getinfo_test \
 	ported/libibverbs/fi_rc_pingpong \
@@ -54,6 +61,7 @@ nobase_dist_config_DATA = \
         test_configs/lat_bw.test \
         test_configs/sockets/all.test \
         test_configs/sockets/quick.test \
+	test_configs/sockets/complete.test \
         test_configs/udp/all.test \
         test_configs/udp/lat_bw.test \
         test_configs/udp/quick.test \
@@ -61,16 +69,28 @@ nobase_dist_config_DATA = \
         test_configs/verbs/all.test \
         test_configs/verbs/quick.test \
 	test_configs/usnic/all.test \
-	test_configs/usnic/quick.test
+	test_configs/usnic/quick.test \
+	test_configs/psm/all.test \
+	test_configs/psm2/all.test
 
 noinst_LTLIBRARIES = libfabtests.la
 libfabtests_la_SOURCES = \
 	common/shared.c \
-	common/jsmn.c
+	common/jsmn.c \
+	include/shared.h \
+	include/jsmn.h \
+	include/unix/osd.h \
+	include/ft_osd.h
+
+benchmarks_srcs = \
+	benchmarks/benchmark_shared.h \
+	benchmarks/benchmark_shared.c
+
+unit_srcs = \
+	include/unit_common.h \
+	unit/common.c
 
 if MACOS
-libfabtests_la_SOURCES += include/osx/osd.h
-
 if !HAVE_CLOCK_GETTIME
 libfabtests_la_SOURCES += common/osx/osd.c
 endif
@@ -104,9 +124,17 @@ simple_fi_rdm_rma_trigger_SOURCES = \
 	simple/rdm_rma_trigger.c
 simple_fi_rdm_rma_trigger_LDADD = libfabtests.la
 
+simple_fi_rdm_deferred_wq_SOURCES = \
+	simple/rdm_deferred_wq.c
+simple_fi_rdm_deferred_wq_LDADD = libfabtests.la
+
 simple_fi_dgram_SOURCES = \
 	simple/dgram.c
 simple_fi_dgram_LDADD = libfabtests.la
+
+simple_fi_mcast_SOURCES = \
+	simple/mcast.c
+simple_fi_mcast_LDADD = libfabtests.la
 
 simple_fi_dgram_waitset_SOURCES = \
 	simple/dgram_waitset.c
@@ -136,6 +164,26 @@ simple_fi_poll_SOURCES = \
 	simple/poll.c
 simple_fi_poll_LDADD = libfabtests.la
 
+simple_fi_multi_ep_SOURCES = \
+	simple/multi_ep.c
+simple_fi_multi_ep_LDADD = libfabtests.la
+
+simple_fi_multi_mr_SOURCES = \
+	simple/multi_mr.c
+simple_fi_multi_mr_LDADD = libfabtests.la
+
+simple_fi_unexpected_msg_SOURCES = \
+	simple/unexpected_msg.c
+simple_fi_unexpected_msg_LDADD = libfabtests.la
+
+simple_fi_rdm_multi_domain_SOURCES = \
+	simple/rdm_multi_domain.c
+simple_fi_rdm_multi_domain_LDADD = libfabtests.la
+
+simple_fi_recv_cancel_SOURCES = \
+	simple/recv_cancel.c
+simple_fi_recv_cancel_LDADD = libfabtests.la
+
 streaming_fi_msg_rma_SOURCES = \
 	streaming/msg_rma.c
 streaming_fi_msg_rma_LDADD = libfabtests.la
@@ -158,86 +206,78 @@ streaming_fi_rdm_rma_LDADD = libfabtests.la
 
 benchmarks_fi_msg_pingpong_SOURCES = \
 	benchmarks/msg_pingpong.c \
-	benchmarks/benchmark_shared.h \
-	benchmarks/benchmark_shared.c
+	$(benchmarks_srcs)
 benchmarks_fi_msg_pingpong_LDADD = libfabtests.la
 
 benchmarks_fi_msg_bw_SOURCES = \
 	benchmarks/msg_bw.c \
-	benchmarks/benchmark_shared.h \
-	benchmarks/benchmark_shared.c
+	$(benchmarks_srcs)
 benchmarks_fi_msg_bw_LDADD = libfabtests.la
 
 benchmarks_fi_rma_bw_SOURCES = \
 	benchmarks/rma_bw.c \
-	benchmarks/benchmark_shared.h \
-	benchmarks/benchmark_shared.c
+	$(benchmarks_srcs)
 benchmarks_fi_rma_bw_LDADD = libfabtests.la
 
 benchmarks_fi_dgram_pingpong_SOURCES = \
 	benchmarks/dgram_pingpong.c \
-	benchmarks/benchmark_shared.h \
-	benchmarks/benchmark_shared.c
+	$(benchmarks_srcs)
 benchmarks_fi_dgram_pingpong_LDADD = libfabtests.la
 
 benchmarks_fi_rdm_cntr_pingpong_SOURCES = \
 	benchmarks/rdm_cntr_pingpong.c \
-	benchmarks/benchmark_shared.h \
-	benchmarks/benchmark_shared.c
+	$(benchmarks_srcs)
 benchmarks_fi_rdm_cntr_pingpong_LDADD = libfabtests.la
 
 benchmarks_fi_rdm_pingpong_SOURCES = \
 	benchmarks/rdm_pingpong.c \
-	benchmarks/benchmark_shared.h \
-	benchmarks/benchmark_shared.c
+	$(benchmarks_srcs)
 benchmarks_fi_rdm_pingpong_LDADD = libfabtests.la
 
 benchmarks_fi_rdm_tagged_pingpong_SOURCES = \
 	benchmarks/rdm_tagged_pingpong.c \
-	benchmarks/benchmark_shared.h \
-	benchmarks/benchmark_shared.c
+	$(benchmarks_srcs)
 benchmarks_fi_rdm_tagged_pingpong_LDADD = libfabtests.la
 
 benchmarks_fi_rdm_tagged_bw_SOURCES = \
 	benchmarks/rdm_tagged_bw.c \
-	benchmarks/benchmark_shared.h \
-	benchmarks/benchmark_shared.c
+	$(benchmarks_srcs)
 benchmarks_fi_rdm_tagged_bw_LDADD = libfabtests.la
 
 
 unit_fi_eq_test_SOURCES = \
 	unit/eq_test.c \
-	unit/common.c
+	$(unit_srcs)
 unit_fi_eq_test_LDADD = libfabtests.la
 
 unit_fi_cq_test_SOURCES = \
 	unit/cq_test.c \
-	unit/common.c
+	$(unit_srcs)
 unit_fi_cq_test_LDADD = libfabtests.la
 
 unit_fi_mr_test_SOURCES = \
 	unit/mr_test.c \
-	unit/common.c
+	$(unit_srcs)
 unit_fi_mr_test_LDADD = libfabtests.la
+
+unit_fi_cntr_test_SOURCES = \
+	unit/cntr_test.c \
+	$(unit_srcs)
+unit_fi_cntr_test_LDADD = libfabtests.la
 
 unit_fi_av_test_SOURCES = \
 	unit/av_test.c \
-	unit/common.c
+	$(unit_srcs)
 unit_fi_av_test_LDADD = libfabtests.la
-
-unit_fi_size_left_test_SOURCES = \
-	unit/size_left_test.c \
-	unit/common.c
-unit_fi_size_left_test_LDADD = libfabtests.la
 
 unit_fi_dom_test_SOURCES = \
 	unit/dom_test.c \
-	unit/common.c
+	$(unit_srcs)
 unit_fi_dom_test_LDADD = libfabtests.la
 
 unit_fi_getinfo_test_SOURCES = \
 	unit/getinfo_test.c \
-	unit/common.c
+	$(unit_srcs)
 unit_fi_getinfo_test_LDADD = libfabtests.la
 
 ported_libibverbs_fi_rc_pingpong_SOURCES = \
@@ -249,6 +289,9 @@ ported_librdmacm_fi_cmatose_SOURCES = \
 ported_librdmacm_fi_cmatose_LDADD = libfabtests.la
 
 complex_fi_ubertest_SOURCES = \
+	complex/fabtest.h \
+	complex/ofi_atomic.h \
+	complex/ofi_atomic.c \
 	complex/ft_main.c \
 	complex/ft_comm.c \
 	complex/ft_comp.c \
@@ -256,16 +299,13 @@ complex_fi_ubertest_SOURCES = \
 	complex/ft_domain.c \
 	complex/ft_endpoint.c \
 	complex/ft_msg.c \
+	complex/ft_verify.c \
 	complex/ft_test.c
 complex_fi_ubertest_LDADD = libfabtests.la
 
 man_MANS = man/fabtests.7
 
 EXTRA_DIST = \
-	include/shared.h \
-	include/unit_common.h \
-	include/jsmn.h \
-	complex/fabtest.h \
 	fabtests.spec.in $(man_MANS)
 
 dist-hook: fabtests.spec

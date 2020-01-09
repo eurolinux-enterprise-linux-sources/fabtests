@@ -137,10 +137,11 @@ int main(int argc, char **argv)
 		opts.dst_addr = argv[optind];
 
 	hints->domain_attr->cq_data_size = 4;  /* required minimum */
+	hints->mode |= FI_RX_CQ_DATA;
 
 	hints->ep_attr->type = FI_EP_MSG;
 	hints->caps = FI_MSG;
-	hints->mode = FI_LOCAL_MR;
+	hints->domain_attr->mr_mode = FI_MR_LOCAL | OFI_MR_BASIC_MAP;
 
 	cq_attr.format = FI_CQ_FORMAT_DATA;
 

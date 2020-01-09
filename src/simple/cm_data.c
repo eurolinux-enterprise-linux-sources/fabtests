@@ -290,6 +290,7 @@ static int client_expect_reject(size_t paramlen)
 		return ret;
 	}
 
+	memset(&err_entry, 0, sizeof(err_entry));
 	ret = fi_eq_readerr(eq, &err_entry, 0);
 	if (ret != sizeof(err_entry)) {
 		FT_EQ_ERR(eq, err_entry, NULL, 0);
@@ -474,7 +475,7 @@ int main(int argc, char **argv)
 
 	hints->ep_attr->type	= FI_EP_MSG;
 	hints->caps		= FI_MSG;
-	hints->mode		= FI_LOCAL_MR;
+	hints->domain_attr->mr_mode = FI_MR_LOCAL | OFI_MR_BASIC_MAP;
 	ft_skip_mr = 1;
 
 	ret = run();

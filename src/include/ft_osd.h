@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Los Alamos Nat. Security, LLC. All rights reserved.
+ * Copyright (c) 2017 Intel Corporation. All rights reserved.
  *
  * This software is available to you under a choice of one of two
  * licenses.  You may choose to be licensed under the terms of the GNU
@@ -30,30 +30,19 @@
  * SOFTWARE.
  */
 
-#ifndef _FABTESTS_OSX_OSD_H_
-#define _FABTESTS_OSX_OSD_H_
+#ifndef _FT_OSD_H_
+#define _FT_OSD_H_
 
-#include <config.h>
-
-#include <sys/time.h>
-#include <time.h>
-
-#if !HAVE_CLOCK_GETTIME
-#define CLOCK_REALTIME 0
-#define CLOCK_REALTIME_COARSE 0
-#define CLOCK_MONOTONIC 0
-
-typedef int clockid_t;
-
-#ifdef __cplusplus
-extern "C" {
+#ifdef __APPLE__
+#include <osx/osd.h>
+#include <unix/osd.h>
+#elif defined __FreeBSD__
+#include <freebsd/osd.h>
+#include <unix/osd.h>
+#elif defined _WIN32
+#include <windows/osd.h>
+#else
+#include <unix/osd.h>
 #endif
 
-int clock_gettime(clockid_t clk_id, struct timespec *tp);
-
-#ifdef __cplusplus
-}
-#endif
-#endif // !HAVE_CLOCK_GETTIME
-
-#endif // FABTESTS_OSX_OSD_H
+#endif /* _FT_OSD_H_ */

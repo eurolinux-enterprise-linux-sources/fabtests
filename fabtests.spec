@@ -1,8 +1,7 @@
 Name: fabtests
-Version: 1.4.2
+Version: 1.5.3
 Release: 1%{?dist}
 Summary: Test suite for libfabric API
-Group: System Environment/Libraries
 License: GPLv2 or BSD
 Url: http://www.github.com/ofiwg/fabtests
 Source: https://github.com/ofiwg/%{name}/releases/download/v%{version}/%{name}-%{version}.tar.bz2
@@ -37,10 +36,19 @@ rm -f %{buildroot}%{_libdir}/*.la
 %files
 %{_bindir}/*
 %{_mandir}/man7/*
-%doc AUTHORS COPYING README
+%doc AUTHORS README
+%license COPYING
 %{_prefix}/share/fabtests/test_configs
 
 %changelog
+* Fri Jan 12 2018 Honggang Li <honli@redhat.com> - 1.5.3-1
+- Rebase to upstream release 1.5.3
+- Resolves: bz1533297
+
+* Tue Oct 24 2017 Honggang Li <honli@redhat.com> - 1.5.1-1
+- Rebase to upstream release 1.5.1.
+- Resolves: bz1505737
+
 * Thu May 18 2017 Honggang Li <honli@redhat.com> - 1.4.2-1
 - Rebase to upstream release 1.4.2.
 - Resolves: bz1451214

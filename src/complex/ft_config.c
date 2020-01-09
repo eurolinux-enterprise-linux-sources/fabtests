@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Intel Corporation.  All rights reserved.
+ * Copyright (c) 2017 Intel Corporation.  All rights reserved.
  *
  * This software is available to you under the BSD license below:
  *
@@ -38,7 +38,7 @@
 #define FT_CAP_RMA	FI_RMA | FI_READ | FI_WRITE | FI_REMOTE_READ | FI_REMOTE_WRITE
 #define FT_CAP_ATOMIC	FI_ATOMICS | FI_READ | FI_WRITE | FI_REMOTE_READ | FI_REMOTE_WRITE
 
-#define FT_MODE_ALL	/*FI_CONTEXT |*/ FI_LOCAL_MR /*| FI_MSG_PREFIX*/
+#define FT_MODE_ALL	FI_CONTEXT | FI_LOCAL_MR /*| FI_MSG_PREFIX*/
 #define FT_MODE_NONE	~0ULL
 
 struct key_t {
@@ -75,7 +75,7 @@ static struct ft_set test_sets_default[] = {
 		.mode = {
 			FT_MODE_ALL
 		},
-		.caps = {
+		.test_class = {
 			FT_CAP_MSG,
 			FT_CAP_TAGGED,
 //			FT_CAP_RMA,
@@ -103,7 +103,7 @@ static struct ft_set test_sets_default[] = {
 		.mode = {
 			FT_MODE_ALL
 		},
-		.caps = {
+		.test_class = {
 			FT_CAP_MSG,
 		},
 		.test_flags = FT_FLAG_QUICKTEST
@@ -222,16 +222,40 @@ static struct key_t keys[] = {
 		.val_size = sizeof(((struct ft_set *)0)->cq_wait_obj) / FT_MAX_WAIT_OBJ,
 	},
 	{
+		.str = "cntr_wait_obj",
+		.offset = offsetof(struct ft_set, cntr_wait_obj),
+		.val_type = VAL_NUM,
+		.val_size = sizeof(((struct ft_set *)0)->cntr_wait_obj) / FT_MAX_WAIT_OBJ,
+	},
+	{
+		.str = "op",
+		.offset = offsetof(struct ft_set, op),
+		.val_type = VAL_NUM,
+		.val_size = sizeof(((struct ft_set *)0)->op) / FI_ATOMIC_OP_LAST,
+	},
+	{
+		.str = "datatype",
+		.offset = offsetof(struct ft_set, datatype),
+		.val_type = VAL_NUM,
+		.val_size = sizeof(((struct ft_set *)0)->datatype) / FI_DATATYPE_LAST,
+	},
+	{
 		.str = "mode",
 		.offset = offsetof(struct ft_set, mode),
 		.val_type = VAL_NUM,
 		.val_size = sizeof(((struct ft_set *)0)->mode) / FT_MAX_PROV_MODES,
 	},
 	{
-		.str = "caps",
-		.offset = offsetof(struct ft_set, caps),
+		.str = "test_class",
+		.offset = offsetof(struct ft_set, test_class),
 		.val_type = VAL_NUM,
-		.val_size = sizeof(((struct ft_set *)0)->caps) / FT_MAX_CAPS,
+		.val_size = sizeof(((struct ft_set *)0)->test_class) / FT_MAX_CLASS,
+	},
+	{
+		.str = "constant_caps",
+		.offset = offsetof(struct ft_set, constant_caps),
+		.val_type = VAL_NUM,
+		.val_size = sizeof(((struct ft_set *)0)->constant_caps) / FT_MAX_CAPS,
 	},
 	{
 		.str = "test_flags",
@@ -239,49 +263,131 @@ static struct key_t keys[] = {
 		.val_type = VAL_NUM,
 		.val_size = sizeof(((struct ft_set *)0)->test_flags),
 	},
+	{
+		.str = "msg_flags",
+		.offset = offsetof(struct ft_set, msg_flags),
+		.val_type = VAL_NUM,
+		.val_size = sizeof(((struct ft_set *)0)->msg_flags),
+	}
 };
 
-static int ft_parse_num(char *str, struct key_t *key, void *buf)
+static int ft_parse_num(char *str, int len, struct key_t *key, void *buf)
 {
 	if (!strncmp(key->str, "test_type", strlen("test_type"))) {
-		TEST_ENUM_SET_N_RETURN(str, FT_TEST_LATENCY, enum ft_test_type, buf);
-		TEST_ENUM_SET_N_RETURN(str, FT_TEST_BANDWIDTH, enum ft_test_type, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_TEST_LATENCY, enum ft_test_type, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_TEST_BANDWIDTH, enum ft_test_type, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_TEST_UNIT, enum ft_test_type, buf);
 		FT_ERR("Unknown test_type");
 	} else if (!strncmp(key->str, "class_function", strlen("class_function"))) {
-		/* This should be in descending order of enum string length to
-		 * prevent incorrect matching with substrings */
-		TEST_ENUM_SET_N_RETURN(str, FT_FUNC_SENDMSG, enum ft_class_function, buf);
-		TEST_ENUM_SET_N_RETURN(str, FT_FUNC_SENDV, enum ft_class_function, buf);
-		TEST_ENUM_SET_N_RETURN(str, FT_FUNC_SEND, enum ft_class_function, buf);
-		TEST_ENUM_SET_N_RETURN(str, FT_FUNC_INJECTDATA, enum ft_class_function, buf);
-		TEST_ENUM_SET_N_RETURN(str, FT_FUNC_INJECT, enum ft_class_function, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_SEND, enum ft_class_function, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_SENDV, enum ft_class_function, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_SENDMSG, enum ft_class_function, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_INJECT, enum ft_class_function, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_INJECTDATA, enum ft_class_function, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_SENDDATA, enum ft_class_function, buf);
+
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_WRITE, enum ft_class_function, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_WRITEV, enum ft_class_function, buf);	
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_WRITEMSG, enum ft_class_function, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_WRITEDATA, enum ft_class_function, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_INJECT_WRITE, enum ft_class_function, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_INJECT_WRITEDATA, enum ft_class_function, buf);
+		
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_READ, enum ft_class_function, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_READV, enum ft_class_function, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_READMSG, enum ft_class_function, buf);
+
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_ATOMIC, enum ft_class_function, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_ATOMICV, enum ft_class_function, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_ATOMICMSG, enum ft_class_function, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_INJECT_ATOMIC, enum ft_class_function, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_FETCH_ATOMIC, enum ft_class_function, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_FETCH_ATOMICV, enum ft_class_function, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_FETCH_ATOMICMSG, enum ft_class_function, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_COMPARE_ATOMIC, enum ft_class_function, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_COMPARE_ATOMICV, enum ft_class_function, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_FUNC_COMPARE_ATOMICMSG, enum ft_class_function, buf);
+
 		FT_ERR("Unknown class_function");
 	} else if (!strncmp(key->str, "ep_type", strlen("ep_type"))) {
-		TEST_ENUM_SET_N_RETURN(str, FI_EP_MSG, enum fi_ep_type, buf);
-		TEST_ENUM_SET_N_RETURN(str, FI_EP_DGRAM, enum fi_ep_type, buf);
-		TEST_ENUM_SET_N_RETURN(str, FI_EP_RDM, enum fi_ep_type, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_EP_MSG, enum fi_ep_type, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_EP_DGRAM, enum fi_ep_type, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_EP_RDM, enum fi_ep_type, buf);
 		FT_ERR("Unknown ep_type");
 	} else if (!strncmp(key->str, "av_type", strlen("av_type"))) {
-		TEST_ENUM_SET_N_RETURN(str, FI_AV_MAP, enum fi_av_type, buf);
-		TEST_ENUM_SET_N_RETURN(str, FI_AV_TABLE, enum fi_av_type, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_AV_MAP, enum fi_av_type, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_AV_TABLE, enum fi_av_type, buf);
 		FT_ERR("Unknown av_type");
-	} else if (!strncmp(key->str, "caps", strlen("caps"))) {
-		TEST_SET_N_RETURN(str, "FT_CAP_MSG", FT_CAP_MSG, uint64_t, buf);
-		TEST_SET_N_RETURN(str, "FT_CAP_TAGGED", FT_CAP_TAGGED, uint64_t, buf);
-		TEST_SET_N_RETURN(str, "FT_CAP_RMA", FT_CAP_RMA, uint64_t, buf);
-		TEST_SET_N_RETURN(str, "FT_CAP_ATOMIC", FT_CAP_ATOMIC, uint64_t, buf);
-		FT_ERR("Unknown caps");
+	} else if (!strncmp(key->str, "test_class", strlen("test_class"))) {
+		TEST_SET_N_RETURN(str, len, "FT_CAP_MSG", FT_CAP_MSG, uint64_t, buf);
+		TEST_SET_N_RETURN(str, len, "FT_CAP_TAGGED", FT_CAP_TAGGED, uint64_t, buf);
+		TEST_SET_N_RETURN(str, len, "FT_CAP_RMA", FT_CAP_RMA, uint64_t, buf);
+		TEST_SET_N_RETURN(str, len, "FT_CAP_ATOMIC", FT_CAP_ATOMIC, uint64_t, buf);
+		FT_ERR("Unknown test class");
 	} else if (!strncmp(key->str, "eq_wait_obj", strlen("eq_wait_obj")) ||
-		!strncmp(key->str, "cq_wait_obj", strlen("cq_wait_obj"))) {
-		TEST_ENUM_SET_N_RETURN(str, FI_WAIT_NONE, enum fi_wait_obj, buf);
-		TEST_ENUM_SET_N_RETURN(str, FI_WAIT_UNSPEC, enum fi_wait_obj, buf);
-		TEST_ENUM_SET_N_RETURN(str, FI_WAIT_FD, enum fi_wait_obj, buf);
-		TEST_ENUM_SET_N_RETURN(str, FI_WAIT_MUTEX_COND, enum fi_wait_obj, buf);
-		FT_ERR("Unknown (eq/cq)_wait_obj");
+		!strncmp(key->str, "cq_wait_obj", strlen("cq_wait_obj")) ||
+		!strncmp(key->str, "cntr_wait_obj", strlen("cntr_wait_obj"))) {
+		TEST_ENUM_SET_N_RETURN(str, len, FI_WAIT_NONE, enum fi_wait_obj, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_WAIT_UNSPEC, enum fi_wait_obj, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_WAIT_FD, enum fi_wait_obj, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_WAIT_MUTEX_COND, enum fi_wait_obj, buf);
+		FT_ERR("Unknown wait_obj");
+	} else if (!strncmp(key->str, "op", strlen("op"))) {
+		TEST_ENUM_SET_N_RETURN(str, len, FI_MIN, enum fi_op, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_MAX, enum fi_op, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_SUM, enum fi_op, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_PROD, enum fi_op, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_LOR, enum fi_op, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_LAND, enum fi_op, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_BOR, enum fi_op, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_BAND, enum fi_op, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_LXOR, enum fi_op, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_BXOR, enum fi_op, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_ATOMIC_READ, enum fi_op, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_ATOMIC_WRITE, enum fi_op, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_CSWAP, enum fi_op, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_CSWAP_NE, enum fi_op, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_CSWAP_LE, enum fi_op, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_CSWAP_LT, enum fi_op, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_CSWAP_GE, enum fi_op, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_CSWAP_GT, enum fi_op, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_MSWAP, enum fi_op, buf);
+		FT_ERR("Unknown op");
+	} else if (!strncmp(key->str, "datatype", strlen("datatype"))) {
+		TEST_ENUM_SET_N_RETURN(str, len, FI_INT8, enum fi_datatype, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_UINT8, enum fi_datatype, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_INT16, enum fi_datatype, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_UINT16, enum fi_datatype, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_INT32, enum fi_datatype, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_UINT32, enum fi_datatype, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_INT64, enum fi_datatype, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_UINT64, enum fi_datatype, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_FLOAT, enum fi_datatype, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_DOUBLE, enum fi_datatype, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_FLOAT_COMPLEX, enum fi_datatype, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_DOUBLE_COMPLEX, enum fi_datatype, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_LONG_DOUBLE, enum fi_datatype, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_LONG_DOUBLE_COMPLEX, enum fi_datatype, buf);
+		FT_ERR("Unknown datatype");
+	} else if (!strncmp(key->str, "msg_flags", strlen("msg_flags"))) {
+		TEST_ENUM_SET_N_RETURN(str, len, FI_REMOTE_CQ_DATA, uint64_t, buf);
+	} else if (!strncmp(key->str, "constant_caps", strlen("constant_caps"))) {
+		TEST_ENUM_SET_N_RETURN(str, len, FI_RMA, uint64_t, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_MSG, uint64_t, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_SEND, uint64_t, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_RECV, uint64_t, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_READ, uint64_t, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_WRITE, uint64_t, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_REMOTE_READ, uint64_t, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_REMOTE_WRITE, uint64_t, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FI_TAGGED, uint64_t, buf);
+		FT_ERR("Unknown caps");
 	} else {
-		TEST_ENUM_SET_N_RETURN(str, FT_COMP_QUEUE, enum ft_comp_type, buf);
-		TEST_SET_N_RETURN(str, "FT_MODE_ALL", FT_MODE_ALL, uint64_t, buf);
-		TEST_SET_N_RETURN(str, "FT_FLAG_QUICKTEST", FT_FLAG_QUICKTEST, uint64_t, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_COMP_QUEUE, enum ft_comp_type, buf);
+		TEST_ENUM_SET_N_RETURN(str, len, FT_COMP_CNTR, enum ft_comp_type, buf);
+		TEST_SET_N_RETURN(str, len, "FT_MODE_ALL", FT_MODE_ALL, uint64_t, buf);
+		TEST_SET_N_RETURN(str, len, "FT_MODE_NONE", FT_MODE_NONE, uint64_t, buf);
+		TEST_SET_N_RETURN(str, len, "FT_FLAG_QUICKTEST", FT_FLAG_QUICKTEST, uint64_t, buf);
 		FT_ERR("Unknown comp_type/mode/test_flags");
 	}
 
@@ -337,7 +443,8 @@ static int ft_parse_key_val(char *config, jsmntok_t *token, char *test_set)
 					val_token[i].end - val_token[i].start);
 			break;
 		case VAL_NUM:
-			if (ft_parse_num(config + val_token[i].start, key,
+			if (ft_parse_num(config + val_token[i].start,
+					val_token[i].end - val_token[i].start, key,
 					test_set + key->offset + key->val_size * i) < 0)
 				return -1;
 			break;
@@ -533,14 +640,33 @@ void fts_start(struct ft_series *series, int index)
 	series->cur_comp = 0;
 	series->cur_eq_wait_obj = 0;
 	series->cur_cq_wait_obj = 0;
+	series->cur_cntr_wait_obj = 0;
 	series->cur_mode = 0;
-	series->cur_caps = 0;
+	series->cur_class = 0;
 
 	series->test_index = 1;
 	if (index > 1) {
 		for (; !fts_end(series, index - 1); fts_next(series))
 			;
 	}
+}
+
+int fts_info_is_valid(void)
+{
+	if (test_info.msg_flags == FI_REMOTE_CQ_DATA) {
+		if (!is_data_func(test_info.class_function) &&
+		    test_info.class_function != FT_FUNC_SENDMSG &&
+		    test_info.class_function != FT_FUNC_WRITEMSG)
+			return 0;
+		if (test_info.comp_type == FT_COMP_CNTR)
+			return 0;
+	}
+
+	if (test_info.test_type == FT_TEST_UNIT &&
+	    test_info.ep_type == FI_EP_DGRAM)
+		return 0;
+
+	return 1;
 }
 
 void fts_next(struct ft_series *series)
@@ -553,9 +679,9 @@ void fts_next(struct ft_series *series)
 	series->test_index++;
 	set = &series->sets[series->cur_set];
 
-	if (set->caps[++series->cur_caps])
+	if (set->test_class[++series->cur_class])
 		return;
-	series->cur_caps = 0;
+	series->cur_class = 0;
 
 	if (set->mode[++series->cur_mode])
 		return;
@@ -564,6 +690,14 @@ void fts_next(struct ft_series *series)
 	if (set->class_function[++series->cur_func])
 		return;
 	series->cur_func = 0;
+
+	if (set->op[++series->cur_op])
+		return;
+	series->cur_op = 0;
+
+	if (set->datatype[++series->cur_datatype])
+		return;
+	series->cur_datatype = 0;
 
 	if (set->comp_type[++series->cur_comp])
 		return;
@@ -576,6 +710,10 @@ void fts_next(struct ft_series *series)
 	if (set->cq_wait_obj[++series->cur_cq_wait_obj])
 		return;
 	series->cur_cq_wait_obj = 0;
+
+	if (set->cntr_wait_obj[++series->cur_cntr_wait_obj])
+		return;
+	series->cur_cntr_wait_obj = 0;
 
 	if (set->ep_type[series->cur_ep] == FI_EP_RDM ||
 	    set->ep_type[series->cur_ep] == FI_EP_DGRAM) {
@@ -604,6 +742,7 @@ int fts_end(struct ft_series *series, int index)
 void fts_cur_info(struct ft_series *series, struct ft_info *info)
 {
 	static struct ft_set *set;
+	int i = 0;
 
 	memset(info, 0, sizeof *info);
 	if (series->cur_set >= series->nsets)
@@ -613,15 +752,35 @@ void fts_cur_info(struct ft_series *series, struct ft_info *info)
 	info->test_type = set->test_type[series->cur_type];
 	info->test_index = series->test_index;
 	info->class_function = set->class_function[series->cur_func];
+	info->msg_flags = set->msg_flags;
+	info->op = set->op[series->cur_op];
+	info->datatype = set->datatype[series->cur_datatype];
 	info->test_flags = set->test_flags;
-	info->caps = set->caps[series->cur_caps];
+	info->test_class = set->test_class[series->cur_class];
+
+	if (set->constant_caps[0]) {
+		while (set->constant_caps[i])
+			info->caps |= set->constant_caps[i++];
+	} else {
+		info->caps = set->test_class[series->cur_class];
+		if (info->caps & (FT_CAP_RMA | FT_CAP_ATOMIC))
+			info->caps |= FT_CAP_MSG;
+	}
+
 	info->mode = (set->mode[series->cur_mode] == FT_MODE_NONE) ?
 			0 : set->mode[series->cur_mode];
+
+	if (set->msg_flags == FI_REMOTE_CQ_DATA)
+		info->mode |= FI_RX_CQ_DATA;
+
 	info->ep_type = set->ep_type[series->cur_ep];
 	info->av_type = set->av_type[series->cur_av];
 	info->comp_type = set->comp_type[series->cur_comp];
+	if (info->caps & (FT_CAP_RMA | FT_CAP_ATOMIC) &&
+		(info->comp_type == FT_COMP_CNTR))
+		info->caps |= FI_RMA_EVENT;
 	info->eq_wait_obj = set->eq_wait_obj[series->cur_eq_wait_obj];
-	info->cq_wait_obj = set->cq_wait_obj[series->cur_cq_wait_obj];
+	info->cntr_wait_obj = set->cntr_wait_obj[series->cur_cntr_wait_obj];
 
 	if (set->node[0])
 		strncpy(info->node, set->node, sizeof(info->node) - 1);

@@ -320,7 +320,6 @@ static int init_av(void)
 			return ret;
 
 		memcpy(&addrlen, rx_buf + ft_rx_prefix_size(), sizeof(size_t));
-		remote_addr = malloc(addrlen * ep_cnt);
 		memcpy(remote_addr, rx_buf + ft_rx_prefix_size() + sizeof(size_t),
 				addrlen * ep_cnt);
 
@@ -673,7 +672,9 @@ int main(int argc, char **argv)
 		opts.dst_addr = argv[optind];
 
 	hints->caps = FI_MSG;
-	hints->mode = FI_CONTEXT | FI_LOCAL_MR;
+	hints->mode = FI_CONTEXT;
+	hints->domain_attr->mr_mode = FI_MR_LOCAL | OFI_MR_BASIC_MAP;
+
 	if (tx_shared_ctx)
 		hints->ep_attr->tx_ctx_cnt = FI_SHARED_CONTEXT;
 	if (rx_shared_ctx)
@@ -689,6 +690,6 @@ int main(int argc, char **argv)
 	ft_free_res();
 	free(addr_array);
 	free(ep_array);
-	free(fi_dup);
+	fi_freeinfo(fi_dup);
 	return ft_exit_code(ret);
 }

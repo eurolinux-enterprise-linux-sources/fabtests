@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2015 Intel Corporation.  All rights reserved.
- * Copyright (c) 2014 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2014-2017 Cisco Systems, Inc.  All rights reserved.
  *
  * This software is available to you under a choice of one of two
  * licenses.  You may choose to be licensed under the terms of the GNU
@@ -52,7 +52,7 @@ static int run(void)
 	/* Post an extra receive to avoid lacking a posted receive in the
 	 * finalize.
 	 */
-	ret = fi_recv(ep, rx_buf, rx_size + ft_rx_prefix_size(), fi_mr_desc(mr),
+	ret = fi_recv(ep, rx_buf, rx_size + ft_rx_prefix_size(), mr_desc,
 			0, &rx_ctx);
 
 	if (!(opts.options & FT_OPT_SIZE)) {
@@ -119,7 +119,7 @@ int main(int argc, char **argv)
 	if (opts.options & FT_OPT_SIZE)
 		hints->ep_attr->max_msg_size = opts.transfer_size;
 	hints->caps = FI_MSG;
-	hints->mode |= FI_LOCAL_MR;
+	hints->domain_attr->mr_mode = FI_MR_LOCAL | OFI_MR_BASIC_MAP;
 
 	ret = run();
 

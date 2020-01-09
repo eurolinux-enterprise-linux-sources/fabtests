@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 #
+# Copyright (c) 2017, Intel Corporation.  All rights reserved.
 # Copyright (c) 2016, Cisco Systems, Inc. All rights reserved.
 # Copyright (c) 2016, Cray, Inc. All rights reserved.
 #
@@ -50,6 +51,7 @@ declare CLIENT="127.0.0.1"
 declare EXCLUDE
 declare GOOD_ADDR="192.168.10.1"
 declare -i VERBOSE=0
+declare -i SKIP_NEG=0
 declare COMPLEX_CFG
 declare TIMEOUT_VAL="90"
 
@@ -99,11 +101,22 @@ simple_tests=(
 	"scalable_ep"
 	"cmatose"
 	"rdm_shared_av"
+	"multi_mr -e msg -V"
+	"multi_mr -e rdm -V"
+	"recv_cancel -e rdm -V"
+	"unexpected_msg -e msg -i 10"
+	"unexpected_msg -e rdm -i 10"
+	"unexpected_msg -e dgram -i 10"
+	"unexpected_msg -e msg -S -i 10"
+	"unexpected_msg -e rdm -S -i 10"
+	"unexpected_msg -e dgram -S -i 10"
 )
 
 short_tests=(
 	"msg_pingpong -I 5"
+	"msg_pingpong -I 5 -v"
 	"msg_bw -I 5"
+	"msg_bw -I 5 -v"
 	"rma_bw -e msg -o write -I 5"
 	"rma_bw -e msg -o read -I 5"
 	"rma_bw -e msg -o writedata -I 5"
@@ -118,11 +131,14 @@ short_tests=(
 	"rdm_cntr_pingpong -I 5"
 	"rdm_multi_recv -I 5"
 	"rdm_pingpong -I 5"
+	"rdm_pingpong -I 5 -v"
 	"rdm_rma -o write -I 5"
 	"rdm_rma -o read -I 5"
 	"rdm_rma -o writedata -I 5"
 	"rdm_tagged_pingpong -I 5"
+	"rdm_tagged_pingpong -I 5 -v"
 	"rdm_tagged_bw -I 5"
+	"rdm_tagged_bw -I 5 -v"
 	"dgram_pingpong -I 5"
 	"rc_pingpong -n 5"
 	"rc_pingpong -n 5 -e"
@@ -134,6 +150,7 @@ standard_tests=(
 	"msg_pingpong -k"
 	"msg_pingpong -k -v"
 	"msg_bw"
+	"msg_bw -v"
 	"rma_bw -e msg -o write"
 	"rma_bw -e msg -o read"
 	"rma_bw -e msg -o writedata"
@@ -155,11 +172,11 @@ standard_tests=(
 	"rdm_rma -o read"
 	"rdm_rma -o writedata"
 	"rdm_tagged_pingpong"
+	"rdm_tagged_pingpong -v"
 	"rdm_tagged_bw"
+	"rdm_tagged_bw -v"
 	"dgram_pingpong"
-	"dgram_pingpong -v"
 	"dgram_pingpong -k"
-	"dgram_pingpong -k -v"
 	"rc_pingpong"
 )
 
@@ -170,7 +187,7 @@ unit_tests=(
 	"eq_test"
 	"cq_test"
 	"mr_test"
-	"size_left_test"
+	"cntr_test"
 )
 
 complex_tests=(
@@ -268,7 +285,7 @@ function unit_test {
 	local test=$1
 	local is_neg=$2
 	local ret1=0
-	local test_exe=$(echo "fi_${test} -p $PROV" | \
+	local test_exe=$(echo "fi_${test} -p \"$PROV\"" | \
 	    sed -e "s/GOOD_ADDR/$GOOD_ADDR/g" -e "s/SERVER_ADDR/${S_INTERFACE}/g")
 	local start_time
 	local end_time
@@ -319,7 +336,7 @@ function cs_test {
 	local test=$1
 	local ret1=0
 	local ret2=0
-	local test_exe="fi_${test} -p ${PROV}"
+	local test_exe="fi_${test} -p \"${PROV}\""
 	local start_time
 	local end_time
 	local test_time
@@ -391,7 +408,7 @@ function complex_test {
 	p1=$!
 	sleep 1
 
-	c_cmd="${BIN_PATH}${test_exe} -s $C_INTERFACE -p ${PROV} -t $config $S_INTERFACE"
+	c_cmd="${BIN_PATH}${test_exe} -s $C_INTERFACE -p \"${PROV}\" -t $config $S_INTERFACE"
 	FI_LOG_LEVEL=error ${CLIENT_CMD} "$c_cmd" &> $c_outp &
 	p2=$!
 
@@ -459,9 +476,11 @@ function main {
 				unit_test "$test" "0"
 			done
 
-			for test in "${neg_unit_tests[@]}"; do
-				unit_test "$test" "1"
-			done
+			if [ $SKIP_NEG -eq 0 ] ; then
+				for test in "${neg_unit_tests[@]}"; do
+					unit_test "$test" "1"
+				done
+			fi
 		;;
 		simple)
 			for test in "${simple_tests[@]}"; do
@@ -523,6 +542,7 @@ function usage {
 	errcho -e " -vvv\tprint output of failing/notrun/passing"
 	errcho -e " -t\ttest set(s): all,quick,unit,simple,standard,short,complex (default quick)"
 	errcho -e " -e\texclude tests: cq_data,dgram_dgram_waitset,..."
+	errcho -e " -N\tskip negative unit tests"
 	errcho -e " -p\tpath to test bins (default PATH)"
 	errcho -e " -c\tclient interface"
 	errcho -e " -s\tserver/host interface"
@@ -531,7 +551,7 @@ function usage {
 	exit 1
 }
 
-while getopts ":vt:p:g:e:c:s:u:T:" opt; do
+while getopts ":vt:p:g:e:c:s:u:T:N" opt; do
 case ${opt} in
 	t) TEST_TYPE=$OPTARG
 	;;
@@ -550,6 +570,8 @@ case ${opt} in
 	u) COMPLEX_CFG=${OPTARG}
 	;;
 	T) TIMEOUT_VAL=${OPTARG}
+	;;
+	N) SKIP_NEG+=1
 	;;
 	:|\?) usage
 	;;

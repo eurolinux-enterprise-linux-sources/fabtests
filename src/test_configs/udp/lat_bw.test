@@ -15,12 +15,12 @@
 		FI_AV_TABLE,
 	],
 	comp_type: [
-		FT_COMP_QUEUE
+		FT_COMP_QUEUE,
 	],
 	mode: [
-		FT_MODE_ALL
+		FT_MODE_ALL,
 	],
-	caps: [
+	test_class: [
 		FT_CAP_MSG,
 	],
 	test_flags: FT_FLAG_QUICKTEST

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2013-2015 Intel Corporation.  All rights reserved.
- * Copyright (c) 2014-2016, Cisco Systems, Inc. All rights reserved.
+ * Copyright (c) 2013-2017 Intel Corporation.  All rights reserved.
+ * Copyright (c) 2014-2017, Cisco Systems, Inc. All rights reserved.
  *
  * This software is available to you under the BSD license below:
  *
@@ -38,6 +38,7 @@
 #include <inttypes.h>
 #include <netinet/tcp.h>
 #include <sys/uio.h>
+#include <stdbool.h>
 
 #include <rdma/fabric.h>
 #include <rdma/fi_rma.h>
@@ -48,15 +49,14 @@ extern "C" {
 #endif
 
 #ifndef FT_FIVERSION
-#define FT_FIVERSION FI_VERSION(1,3)
+#define FT_FIVERSION FI_VERSION(1,5)
 #endif
 
-#ifdef __APPLE__
-#include "osx/osd.h"
-#elif defined __FreeBSD__
-#include "freebsd/osd.h"
-#endif
+#include "ft_osd.h"
+#define OFI_UTIL_PREFIX "ofi-"
+#define OFI_NAME_DELIM ';'
 
+#define OFI_MR_BASIC_MAP (FI_MR_ALLOCATED | FI_MR_PROV_KEY | FI_MR_VIRT_ADDR)
 
 /* exit codes must be 0-255 */
 static inline int ft_exit_code(int ret)
@@ -128,6 +128,8 @@ struct ft_opts {
 	int warmup_iterations;
 	int transfer_size;
 	int window_size;
+	int av_size;
+	int verbose;
 	char *src_port;
 	char *dst_port;
 	char *src_addr;
@@ -139,6 +141,9 @@ struct ft_opts {
 	int machr;
 	enum ft_rma_opcodes rma_op;
 	int argc;
+
+	/* Fail if the selected provider does not support FI_MSG_PREFIX.  */
+	int force_prefix;
 	char **argv;
 };
 
@@ -152,8 +157,10 @@ extern struct fid_ep *ep, *alias_ep;
 extern struct fid_cq *txcq, *rxcq;
 extern struct fid_cntr *txcntr, *rxcntr;
 extern struct fid_mr *mr, no_mr;
+extern void *mr_desc;
 extern struct fid_av *av;
 extern struct fid_eq *eq;
+extern struct fid_mc *mc;
 
 extern fi_addr_t remote_fi_addr;
 extern char *buf, *tx_buf, *rx_buf;
@@ -178,12 +185,16 @@ extern struct ft_opts opts;
 void ft_parseinfo(int op, char *optarg, struct fi_info *hints);
 void ft_parse_addr_opts(int op, char *optarg, struct ft_opts *opts);
 void ft_parsecsopts(int op, char *optarg, struct ft_opts *opts);
-int ft_parse_rma_opts(int op, char *optarg, struct ft_opts *opts);
+int ft_parse_rma_opts(int op, char *optarg, struct fi_info *hints,
+		      struct ft_opts *opts);
 void ft_addr_usage();
 void ft_usage(char *name, char *desc);
+void ft_mcusage(char *name, char *desc);
 void ft_csusage(char *name, char *desc);
+
 void ft_fill_buf(void *buf, int size);
 int ft_check_buf(void *buf, int size);
+int ft_check_opts(uint64_t flags);
 uint64_t ft_init_cq_data(struct fi_info *info);
 int ft_sock_listen(char *service);
 int ft_sock_connect(char *node, char *service);
@@ -193,6 +204,8 @@ int ft_sock_recv(int fd, void *msg, size_t len);
 int ft_sock_sync(int value);
 void ft_sock_shutdown(int fd);
 extern int ft_skip_mr;
+extern int (*ft_mr_alloc_func)(void);
+extern uint64_t ft_tag;
 extern int ft_parent_proc;
 extern int ft_socket_pair[2];
 extern int sock;
@@ -210,6 +223,8 @@ extern char default_port[8];
 		.warmup_iterations = 10, \
 		.transfer_size = 1024, \
 		.window_size = 64, \
+		.av_size = 1, \
+		.verbose = 0, \
 		.sizes_enabled = FT_DEFAULT_SIZE, \
 		.rma_op = FT_RMA_WRITE, \
 		.argc = argc, .argv = argv \
@@ -227,11 +242,11 @@ int ft_read_addr_opts(char **node, char **service, struct fi_info *hints,
 char *size_str(char str[FT_STR_LEN], long long size);
 char *cnt_str(char str[FT_STR_LEN], long long cnt);
 int size_to_count(int size);
-
+size_t datatype_to_size(enum fi_datatype datatype);
 
 #define FT_PRINTERR(call, retv) \
 	do { fprintf(stderr, call "(): %s:%d, ret=%d (%s)\n", __FILE__, __LINE__, \
-			(int) retv, fi_strerror((int) -retv)); } while (0)
+			(int) (retv), fi_strerror((int) -(retv))); } while (0)
 
 #define FT_LOG(level, fmt, ...) \
 	do { fprintf(stderr, "[%s] fabtests:%s:%d: " fmt "\n", level, __FILE__, \
@@ -292,19 +307,33 @@ int size_to_count(int size);
 
 int ft_alloc_bufs();
 int ft_open_fabric_res();
-int ft_set_rma_caps(struct fi_info *fi, enum ft_rma_opcodes rma_op);
 int ft_getinfo(struct fi_info *hints, struct fi_info **info);
 int ft_init_fabric();
 int ft_start_server();
 int ft_server_connect();
 int ft_client_connect();
+int ft_init_fabric_cm(void);
+int ft_complete_connect(struct fid_ep *ep, struct fid_eq *eq);
+int ft_retrieve_conn_req(struct fid_eq *eq, struct fi_info **fi);
+int ft_accept_connection(struct fid_ep *ep, struct fid_eq *eq);
+int ft_connect_ep(struct fid_ep *ep,
+		struct fid_eq *eq, fi_addr_t *remote_addr);
 int ft_alloc_ep_res(struct fi_info *fi);
 int ft_alloc_active_res(struct fi_info *fi);
 int ft_init_ep(void);
+int ft_setup_ep(struct fid_ep *ep, struct fid_eq *eq,
+		struct fid_av *av, struct fid_cq *txcq,
+		struct fid_cq *rxcq, struct fid_cntr *txcntr,
+		struct fid_cntr *rxcntr, bool post_initial_recv);
 int ft_init_alias_ep(uint64_t flags);
 int ft_av_insert(struct fid_av *av, void *addr, size_t count, fi_addr_t *fi_addr,
 		uint64_t flags, void *context);
 int ft_init_av(void);
+int ft_join_mc(void);
+int ft_init_av_dst_addr(struct fid_av *av_ptr, struct fid_ep *ep_ptr,
+		fi_addr_t *remote_addr);
+int ft_init_av_addr(struct fid_av *av, struct fid_ep *ep,
+		fi_addr_t *addr);
 int ft_exchange_keys(struct fi_rma_iov *peer_iov);
 void ft_free_res();
 void init_test(struct ft_opts *opts, char *test_name, size_t test_name_len);
@@ -319,26 +348,59 @@ static inline void ft_stop(void)
 	clock_gettime(CLOCK_MONOTONIC, &end);
 	opts.options &= ~FT_OPT_ACTIVE;
 }
-int ft_sync();
+
+/* Set the FI_MSG_PREFIX mode bit in the given fi_info structure and also set
+ * the option bit in the given opts structure. If using ft_getinfo, it will
+ * return -ENODATA if the provider clears the application requested mdoe bit.
+ */
+static inline void ft_force_prefix(struct fi_info *info, struct ft_opts *opts)
+{
+	info->mode |= FI_MSG_PREFIX;
+	opts->force_prefix = 1;
+}
+
+/* If force_prefix was not requested, just continue. If it was requested,
+ * return true if it was respected by the provider.
+ */
+static inline bool ft_check_prefix_forced(struct fi_info *info,
+					 struct ft_opts *opts)
+{
+	if (opts->force_prefix) {
+		return (info->tx_attr->mode & FI_MSG_PREFIX) &&
+		       (info->rx_attr->mode & FI_MSG_PREFIX);
+	}
+
+	/* Continue if forced prefix wasn't requested. */
+	return true;
+}
+
+int ft_sync(void);
 int ft_sync_pair(int status);
-int ft_fork_and_pair();
-int ft_wait_child();
+int ft_fork_and_pair(void);
+int ft_wait_child(void);
 int ft_finalize(void);
 
-size_t ft_rx_prefix_size();
-size_t ft_tx_prefix_size();
+size_t ft_rx_prefix_size(void);
+size_t ft_tx_prefix_size(void);
 ssize_t ft_post_rx(struct fid_ep *ep, size_t size, struct fi_context* ctx);
 ssize_t ft_post_tx(struct fid_ep *ep, fi_addr_t fi_addr, size_t size,
 		struct fi_context* ctx);
 ssize_t ft_rx(struct fid_ep *ep, size_t size);
 ssize_t ft_tx(struct fid_ep *ep, fi_addr_t fi_addr, size_t size, struct fi_context *ctx);
-ssize_t ft_inject(struct fid_ep *ep, size_t size);
+ssize_t ft_inject(struct fid_ep *ep, fi_addr_t fi_addr, size_t size);
 ssize_t ft_post_rma(enum ft_rma_opcodes op, struct fid_ep *ep, size_t size,
 		struct fi_rma_iov *remote, void *context);
 ssize_t ft_rma(enum ft_rma_opcodes op, struct fid_ep *ep, size_t size,
 		struct fi_rma_iov *remote, void *context);
 ssize_t ft_post_rma_inject(enum ft_rma_opcodes op, struct fid_ep *ep, size_t size,
 		struct fi_rma_iov *remote);
+
+int check_base_atomic_op(struct fid_ep *endpoint, enum fi_op op,
+			 enum fi_datatype datatype, size_t *count);
+int check_fetch_atomic_op(struct fid_ep *endpoint, enum fi_op op,
+			  enum fi_datatype datatype, size_t *count);
+int check_compare_atomic_op(struct fid_ep *endpoint, enum fi_op op,
+			    enum fi_datatype datatype, size_t *count);
 
 int ft_cq_readerr(struct fid_cq *cq);
 int ft_get_rx_comp(uint64_t total);
@@ -352,9 +414,18 @@ void show_perf(char *name, int tsize, int iters, struct timespec *start,
 		struct timespec *end, int xfers_per_iter);
 void show_perf_mr(int tsize, int iters, struct timespec *start,
 		struct timespec *end, int xfers_per_iter, int argc, char *argv[]);
-int send_recv_greeting(struct fid_ep *ep);
+
+int ft_send_recv_greeting(struct fid_ep *ep);
+int ft_send_greeting(struct fid_ep *ep);
+int ft_recv_greeting(struct fid_ep *ep);
+
 int check_recv_msg(const char *message);
 uint64_t ft_info_to_mr_access(struct fi_info *info);
+int ft_alloc_bit_combo(uint64_t fixed, uint64_t opt, uint64_t **combos, int *len);
+void ft_free_bit_combo(uint64_t *combo);
+int ft_cntr_open(struct fid_cntr **cntr);
+const char *ft_util_name(const char *str, size_t *len);
+const char *ft_core_name(const char *str, size_t *len);
 
 #define FT_PROCESS_QUEUE_ERR(readerr, rd, queue, fn, str)	\
 	do {							\
@@ -375,12 +446,12 @@ uint64_t ft_info_to_mr_access(struct fi_info *info);
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #define ARRAY_SIZE(A) (sizeof(A)/sizeof(*A))
 
-#define TEST_ENUM_SET_N_RETURN(str, enum_val, type, data)	\
-	TEST_SET_N_RETURN(str, #enum_val, enum_val, type, data)
+#define TEST_ENUM_SET_N_RETURN(str, len,  enum_val, type, data)	\
+	TEST_SET_N_RETURN(str, len, #enum_val, enum_val, type, data)
 
-#define TEST_SET_N_RETURN(str, val_str, val, type, data)	\
+#define TEST_SET_N_RETURN(str, len, val_str, val, type, data)	\
 	do {							\
-		if (!strncmp(str, val_str, strlen(val_str))) {	\
+		if (!strncmp(str, val_str, len)) {	\
 			*(type *)(data) = val;			\
 			return 0;				\
 		}						\

@@ -57,8 +57,9 @@ static int run_test(void)
                         fprintf(stderr, "Transmit buffer too small.\n");
                         return -FI_ETOOSMALL;
                 }
-		ret = fi_write(ep, tx_buf, message_len, fi_mr_desc(mr),
-				remote_fi_addr, 0, FT_MR_KEY, &fi_ctx_write);
+		ret = fi_write(ep, tx_buf, message_len, mr_desc,
+			       remote_fi_addr, 0, FT_MR_KEY,
+			       &fi_ctx_write);
 		if (ret)
 			return ret;
 
@@ -113,7 +114,8 @@ int main(int argc, char **argv)
 	hints->domain_attr->mr_mode = FI_MR_SCALABLE;
 	hints->ep_attr->type = FI_EP_RDM;
 	hints->caps = FI_MSG | FI_RMA | FI_RMA_EVENT;
-	hints->mode = FI_CONTEXT | FI_LOCAL_MR;
+	hints->mode = FI_CONTEXT;
+	hints->domain_attr->mr_mode = FI_MR_LOCAL | OFI_MR_BASIC_MAP;
 
 	ret = run_test();
 

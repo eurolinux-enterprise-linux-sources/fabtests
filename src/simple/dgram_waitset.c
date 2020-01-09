@@ -84,8 +84,8 @@ static int send_recv()
 	struct fi_cq_entry comp;
 	int ret;
 
-	ret = fi_recv(ep, rx_buf, rx_size + ft_rx_prefix_size(), fi_mr_desc(mr),
-		      0, &rx_ctx);
+	ret = fi_recv(ep, rx_buf, rx_size + ft_rx_prefix_size(),
+		      mr_desc, 0, &rx_ctx);
 	if (ret)
 		return ret;
 
@@ -181,7 +181,8 @@ int main(int argc, char **argv)
 
 	hints->ep_attr->type = FI_EP_DGRAM;
 	hints->caps = FI_MSG;
-	hints->mode = FI_CONTEXT | FI_LOCAL_MR;
+	hints->mode = FI_CONTEXT;
+	hints->domain_attr->mr_mode = FI_MR_LOCAL | OFI_MR_BASIC_MAP;
 
 	ret = run();
 

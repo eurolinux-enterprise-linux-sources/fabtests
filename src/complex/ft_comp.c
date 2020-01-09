@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 Intel Corporation.  All rights reserved.
+ * Copyright (c) 2013-2017 Intel Corporation.  All rights reserved.
  *
  * This software is available to you under the BSD license below:
  *
@@ -50,6 +50,31 @@ static size_t comp_entry_size[] = {
 };
 */
 
+static int ft_open_cntrs(void)
+{
+	struct fi_cntr_attr attr;
+	int ret;
+
+	if (!txcntr) {
+		memset(&attr, 0, sizeof attr);
+		attr.wait_obj = test_info.cntr_wait_obj;
+		ret = fi_cntr_open(domain, &attr, &txcntr, &txcntr);
+		if (ret) {
+			FT_PRINTERR("fi_cntr_open", ret);
+			return ret;
+		}
+	}
+	if (!rxcntr) {
+		memset(&attr, 0, sizeof attr);
+		attr.wait_obj = test_info.cntr_wait_obj;
+		ret = fi_cntr_open(domain, &attr, &rxcntr, &rxcntr);
+		if (ret) {
+			FT_PRINTERR("fi_cntr_open", ret);
+			return ret;
+		}
+	}
+	return 0;
+}
 
 static int ft_open_cqs(void)
 {
@@ -59,7 +84,7 @@ static int ft_open_cqs(void)
 	if (!txcq) {
 		memset(&attr, 0, sizeof attr);
 		attr.format = ft_tx_ctrl.cq_format;
-		attr.wait_obj = ft_tx_ctrl.comp_wait;
+		attr.wait_obj = test_info.cq_wait_obj;
 		attr.size = ft_tx_ctrl.max_credits;
 
 		ret = fi_cq_open(domain, &attr, &txcq, NULL);
@@ -72,7 +97,7 @@ static int ft_open_cqs(void)
 	if (!rxcq) {
 		memset(&attr, 0, sizeof attr);
 		attr.format = ft_rx_ctrl.cq_format;
-		attr.wait_obj = ft_rx_ctrl.comp_wait;
+		attr.wait_obj = test_info.cq_wait_obj;
 		attr.size = ft_rx_ctrl.max_credits;
 
 		ret = fi_cq_open(domain, &attr, &rxcq, NULL);
@@ -89,26 +114,53 @@ int ft_open_comp(void)
 {
 	int ret;
 
-	ret = (test_info.comp_type == FT_COMP_QUEUE) ?
-		ft_open_cqs() : -FI_ENOSYS;
+	ret = ft_open_cqs();
+	if (ret)
+		return ret;
+
+	switch (test_info.comp_type) {
+	case FT_COMP_QUEUE:
+		break;
+	case FT_COMP_CNTR:
+		ret = ft_open_cntrs();
+		break;
+	default:
+		ret = -FI_ENOSYS;
+	}
 
 	return ret;
 }
 
-int ft_bind_comp(struct fid_ep *ep, uint64_t flags)
+int ft_bind_comp(struct fid_ep *ep)
 {
 	int ret;
+	uint64_t flags;
 
-	if (flags & FI_SEND) {
-		ret = fi_ep_bind(ep, &txcq->fid, flags & ~FI_RECV);
+	flags = FI_TRANSMIT;
+	ret = fi_ep_bind(ep, &txcq->fid, flags);
+	if (ret) {
+		FT_PRINTERR("fi_ep_bind", ret);
+		return ret;
+	}
+
+	if (test_info.comp_type == FT_COMP_CNTR) {
+		flags |= FI_READ | FI_WRITE;
+		ret = fi_ep_bind(ep, &txcntr->fid, flags);
 		if (ret) {
 			FT_PRINTERR("fi_ep_bind", ret);
 			return ret;
 		}
 	}
 
-	if (flags & FI_RECV) {
-		ret = fi_ep_bind(ep, &rxcq->fid, flags & ~FI_SEND);
+	flags = FI_RECV;
+	ret = fi_ep_bind(ep, &rxcq->fid, flags);
+	if (ret) {
+		FT_PRINTERR("fi_ep_bind", ret);
+		return ret;
+	}
+
+	if (test_info.comp_type == FT_COMP_CNTR) {
+		ret = fi_ep_bind(ep, &rxcntr->fid, flags);
 		if (ret) {
 			FT_PRINTERR("fi_ep_bind", ret);
 			return ret;
@@ -119,7 +171,7 @@ int ft_bind_comp(struct fid_ep *ep, uint64_t flags)
 }
 
 /* Read CQ until there are no more completions */
-#define ft_cq_read(cq_read, cq, buf, count, completions, str, ret, ...)	\
+#define ft_cq_read(cq_read, cq, buf, count, completions, str, ret, verify,...)	\
 	do {							\
 		ret = cq_read(cq, buf, count, ##__VA_ARGS__);	\
 		if (ret < 0) {					\
@@ -133,6 +185,8 @@ int ft_bind_comp(struct fid_ep *ep, uint64_t flags)
 			return ret;				\
 		} else {					\
 			completions += ret;			\
+			if (verify)				\
+				ft_verify_comp(buf);		\
 		}						\
 	} while (ret == count)
 
@@ -142,7 +196,7 @@ static int ft_comp_x(struct fid_cq *cq, struct ft_xcontrol *ft_x,
 	uint8_t buf[FT_COMP_BUF_SIZE];
 	struct timespec s, e;
 	int poll_time = 0;
-	int ret;
+	int ret, verify = (test_info.test_type == FT_TEST_UNIT && cq == rxcq);
 
 	switch(test_info.cq_wait_obj) {
 	case FI_WAIT_NONE:
@@ -151,7 +205,7 @@ static int ft_comp_x(struct fid_cq *cq, struct ft_xcontrol *ft_x,
 				clock_gettime(CLOCK_MONOTONIC, &s);
 
 			ft_cq_read(fi_cq_read, cq, buf, comp_entry_cnt[ft_x->cq_format],
-					ft_x->credits, x_str, ret);
+					ft_x->credits, x_str, ret, verify);
 
 			clock_gettime(CLOCK_MONOTONIC, &e);
 			poll_time = get_elapsed(&s, &e, MILLI);
@@ -162,7 +216,7 @@ static int ft_comp_x(struct fid_cq *cq, struct ft_xcontrol *ft_x,
 	case FI_WAIT_FD:
 	case FI_WAIT_MUTEX_COND:
 		ft_cq_read(fi_cq_sread, cq, buf, comp_entry_cnt[ft_x->cq_format],
-			ft_x->credits, x_str, ret, NULL, timeout);
+			ft_x->credits, x_str, ret, verify, NULL, timeout);
 		break;
 	case FI_WAIT_SET:
 		FT_ERR("fi_ubertest: Unsupported cq wait object");
@@ -175,13 +229,46 @@ static int ft_comp_x(struct fid_cq *cq, struct ft_xcontrol *ft_x,
 	return (ret == -FI_EAGAIN && timeout) ? ret : 0;
 }
 
+static int ft_cntr_x(struct fid_cntr *cntr, struct ft_xcontrol *ft_x,
+		     int timeout)
+{
+	uint64_t cntr_val;
+	struct timespec s, e;
+	int poll_time = clock_gettime(CLOCK_MONOTONIC, &s);
+
+	do {
+		cntr_val = fi_cntr_read(cntr);
+		clock_gettime(CLOCK_MONOTONIC, &e);
+		poll_time = get_elapsed(&s, &e, MILLI);
+	} while (cntr_val == ft_x->total_comp && poll_time < timeout);
+
+	ft_x->credits += (cntr_val - ft_x->total_comp);
+	ft_x->total_comp = cntr_val;
+
+	return 0;
+}
+
 int ft_comp_rx(int timeout)
 {
-	return ft_comp_x(rxcq, &ft_rx_ctrl, "rxcq", timeout);
+	switch (test_info.comp_type) {
+	case FT_COMP_CNTR:
+		return ft_cntr_x(rxcntr, &ft_rx_ctrl, timeout);
+	case FT_COMP_QUEUE:
+		return ft_comp_x(rxcq, &ft_rx_ctrl, "rxcq", timeout);
+	default:
+		return -FI_ENOSYS;
+	}
 }
 
 
 int ft_comp_tx(int timeout)
 {
-	return ft_comp_x(txcq, &ft_tx_ctrl, "txcq", timeout);
+	switch (test_info.comp_type) {
+	case FT_COMP_CNTR:
+		return ft_cntr_x(txcntr, &ft_tx_ctrl, timeout);
+	case FT_COMP_QUEUE:
+		return ft_comp_x(txcq, &ft_tx_ctrl, "txcq", timeout);
+	default:
+		return -FI_ENOSYS;
+	}
 }
